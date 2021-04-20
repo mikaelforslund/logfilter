@@ -1,0 +1,2 @@
+string ivp4 127.0.0.1 number 123.0 date 1970-07-31 email mikael@gmail.com
+ipv6 1762:0:0:0:0:B03:1:AF18 with an integer 42

@@ -1,0 +1,33 @@
+name: semfilter
+version: "0.1"
+about: Simple command line tool to filter unstructured text data. Allows tokens to be cast to data types, filter data using an expression language, and sort the result.
+args:
+    - verbose:
+        short: v
+        help: Sets the level of verbosity
+    - data-types:
+        short: t
+        long: data-types
+        help: Specify datatypes to look for
+        required: true
+        multiple: true
+        takes_value: true
+    - data-formats:
+        short: df
+        long: data-formats
+        help: Specify the data formats to look for
+        required: false
+        multiple: true
+        takes_value: true
+    - filter-expression:
+        short: f
+        long: filter
+        help: The filter expression to use
+        required: false
+        takes_value: true 
+    - sort-expression:
+        short: s
+        long : sort-expr
+        help: The sort expression to use
+        required: false
+        takes_value: true
