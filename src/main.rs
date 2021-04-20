@@ -1,6 +1,8 @@
+
 mod parser;
-use parser::{parse, full_lines, Token};
-use std::io::{self};
+
+use parser::{ parse, full_lines, Token };
+use std::io::{ self };
 
 fn main() -> Result<(), io::Error> {
 

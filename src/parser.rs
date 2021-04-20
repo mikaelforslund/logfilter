@@ -4,7 +4,7 @@ use regex::Regex;
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Token {
     StringToken(String),
     NumberToken(f64),
@@ -15,7 +15,7 @@ pub enum Token {
     IPv6Token(String, String)
 }
 
-fn is_match(token_type: &TokenType, str: &String) -> bool {
+fn is_match(token_type: &TokenType, str: &str) -> bool {
     match TOKENTYPE_MAP.get(&token_type) {
         Some(r) => r.is_match(&str),
         None => false
@@ -23,14 +23,14 @@ fn is_match(token_type: &TokenType, str: &String) -> bool {
 }
 
 // TODO do we really need to record the format in the Token?
-pub fn parse(str: &String) -> Token {
+pub fn parse(str: &str) -> Token {
     match str {
-        str if is_match(&TokenType::Date, &str) => Token::DateToken(str.to_string(), "dateFormat".to_string()),
-        str if is_match(&TokenType::Email, &str) => Token::EmailToken(str.to_string()),
-        str if is_match(&TokenType::Ipv4, &str) => Token::IPv4Token(str.to_string(), "ipv4Format".to_string()),
-        str if is_match(&TokenType::Ipv6, &str) => Token::IPv6Token(str.to_string(), "ipv6Format".to_string()),
-        str if is_match(&TokenType::Number, &str) => Token::NumberToken(str.parse().unwrap()),
-        str if is_match(&TokenType::Integer, &str) => Token::IntegerToken(str.parse().unwrap()),
+        str if is_match(&TokenType::Date, str) => Token::DateToken(str.to_string(), "dateFormat".to_string()),
+        str if is_match(&TokenType::Email, str) => Token::EmailToken(str.to_string()),
+        str if is_match(&TokenType::Ipv4, str) => Token::IPv4Token(str.to_string(), "ipv4Format".to_string()),
+        str if is_match(&TokenType::Ipv6, str) => Token::IPv6Token(str.to_string(), "ipv6Format".to_string()),
+        str if is_match(&TokenType::Number, str) => Token::NumberToken(str.parse().unwrap()),
+        str if is_match(&TokenType::Integer, str) => Token::IntegerToken(str.parse().unwrap()),
         // TODO add mechanism to be able to add more definitions dynamically?
         _ => Token::StringToken(str.to_string())       
     }
@@ -64,4 +64,17 @@ pub fn full_lines(mut input: impl BufRead) -> impl Iterator<Item = io::Result<St
             Err(e) => Some(Err(e)),
         }
     })
+}
+
+#[cfg(test)]
+
+#[test]
+fn test_parse_token() {        
+    assert!(matches!(parse("test"), Token::StringToken(_)));
+    assert!(matches!(parse("3.14"), Token::NumberToken(_)));
+    assert!(matches!(parse("10"), Token::IntegerToken(_)));
+    assert!(matches!(parse("test@gmail.com"), Token::EmailToken(_)));
+    assert!(matches!(parse("127.0.0.1"), Token::IPv4Token(_, _)));
+    assert!(matches!(parse("1762:0:0:0:0:B03:1:AF18"), Token::IPv6Token(_, _)));
+    assert!(matches!(parse("1970-07-31"), Token::DateToken(_, _)));
 }
