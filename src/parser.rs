@@ -54,7 +54,7 @@ lazy_static! {
         map
     };
 }
-
+ 
 pub fn full_lines(mut input: impl BufRead) -> impl Iterator<Item = io::Result<String>> {
     std::iter::from_fn(move || {
         let mut vec = String::new();
