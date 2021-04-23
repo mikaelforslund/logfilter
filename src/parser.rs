@@ -11,8 +11,8 @@ pub enum Token {
     IntegerToken(u64),
     EmailToken(String),
     DateToken(String, String), 
-    IPv4Token(String, String),
-    IPv6Token(String, String)
+    IPv4Token(String),
+    IPv6Token(String)
 }
 
 fn is_match(token_type: &TokenType, str: &str) -> bool {
@@ -27,8 +27,8 @@ pub fn parse(str: &str) -> Token {
     match str {
         str if is_match(&TokenType::Date, str) => Token::DateToken(str.to_string(), "dateFormat".to_string()),
         str if is_match(&TokenType::Email, str) => Token::EmailToken(str.to_string()),
-        str if is_match(&TokenType::Ipv4, str) => Token::IPv4Token(str.to_string(), "ipv4Format".to_string()),
-        str if is_match(&TokenType::Ipv6, str) => Token::IPv6Token(str.to_string(), "ipv6Format".to_string()),
+        str if is_match(&TokenType::Ipv4, str) => Token::IPv4Token(str.to_string()),
+        str if is_match(&TokenType::Ipv6, str) => Token::IPv6Token(str.to_string()),
         str if is_match(&TokenType::Number, str) => Token::NumberToken(str.parse().unwrap()),
         str if is_match(&TokenType::Integer, str) => Token::IntegerToken(str.parse().unwrap()),
         // TODO add mechanism to be able to add more definitions dynamically?
@@ -74,7 +74,7 @@ fn test_parse_token() {
     assert!(matches!(parse("3.14"), Token::NumberToken(_)));
     assert!(matches!(parse("10"), Token::IntegerToken(_)));
     assert!(matches!(parse("test@gmail.com"), Token::EmailToken(_)));
-    assert!(matches!(parse("127.0.0.1"), Token::IPv4Token(_, _)));
-    assert!(matches!(parse("1762:0:0:0:0:B03:1:AF18"), Token::IPv6Token(_, _)));
+    assert!(matches!(parse("127.0.0.1"), Token::IPv4Token(_)));
+    assert!(matches!(parse("1762:0:0:0:0:B03:1:AF18"), Token::IPv6Token(_)));
     assert!(matches!(parse("1970-07-31"), Token::DateToken(_, _)));
 }

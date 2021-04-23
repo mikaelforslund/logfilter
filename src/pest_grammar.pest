@@ -1,0 +1,50 @@
+grammar = _{ SOI ~ expr+ ~ EOI } 
+
+expr = _{
+      groupExpr  
+    | andExpr
+    | orExpr
+    | containsExpr
+    | simpleExpr
+}
+
+andExpr = { simpleExpr ~ "&&" ~ expr }
+
+orExpr = { simpleExpr ~ "||" ~ expr }
+
+groupExpr =  { "(" ~ orExpr ~ ")" ~ "&&" ~ expr }
+
+containsExpr = { typeExpr ~ inOp ~ listExpr }       // e.g. date(1) in [1970-07-31, now()] 
+
+simpleExpr = { typeExpr ~ op ~ value }              // e.g. date(1) > 1970-07-31, internal check for compatibility needed...
+
+typeExpr = { typeTerm ~ "(" ~ typeTermArg ~ ")" }   // e.g. date(1) or date(*)
+
+typeTerm = { 
+    "date" | "time"| "timestamp" | "boolean" | "ipv4" 
+  | "ipv6" | "semver" | "email" | "loglevel" | "number" 
+  | "integer" | "float" 
+}  
+
+typeTermArg = { ASCII_DIGIT+ | "*" }
+
+listExpr = { "[" ~ value ~ ("," ~ value)* ~ "]" }   // e.g. [value, ...]
+
+WHITESPACE = _{ " " }
+
+op = { gt | lt | gte | lte | eq | neq | matchOp }
+
+gt = { ">" }
+lt = { "<" }
+gte = { ">=" }
+lte = { "<=" } 
+eq = { "== " }
+neq = { "!=" }
+matchOp = { "match" }
+inOp = { "in" }
+
+value = { string } 
+
+string = _{ char* }
+
+char = _{ ASCII_ALPHANUMERIC | "." | "_" | "-" | "/" | "()" | ":" }
