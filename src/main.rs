@@ -1,8 +1,8 @@
 
-mod parser;
+mod tokenizer;
 mod grammar;
 
-use parser::{ parse, full_lines, Token };
+use tokenizer::{ parse, full_lines, Token };
 use std::io::{ self };
 
 extern crate pest;

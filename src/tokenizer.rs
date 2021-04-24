@@ -4,7 +4,7 @@ use regex::Regex;
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, PartialOrd)]
 pub enum Token {
     StringToken(String),
     NumberToken(f64),
@@ -13,6 +13,21 @@ pub enum Token {
     DateToken(String, String), 
     IPv4Token(String),
     IPv6Token(String)
+}
+
+impl Token {
+    pub fn new(&self, value: &str) -> Token {
+        match &*self {
+            Token::DateToken(_, f) => Token::DateToken(value.to_string(), f.to_string()),
+            Token::StringToken(_) =>  Token::StringToken(value.to_string()),
+            Token::IntegerToken(_) => Token::IntegerToken(value.parse().unwrap()),
+            Token::NumberToken(_) => Token::NumberToken(value.parse().unwrap()),
+            Token::EmailToken(_) => Token::EmailToken(value.to_string()),
+            Token::IPv4Token(_) => Token::IPv4Token(value.to_string()),
+            Token::IPv6Token(_) => Token::IPv6Token(value.to_string()),
+            _ => unreachable!()
+        }
+    } 
 }
 
 fn is_match(token_type: &TokenType, str: &str) -> bool {

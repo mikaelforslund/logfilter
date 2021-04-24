@@ -3,7 +3,7 @@ use pest::Parser;
 use pest::iterators::Pairs;
 use pest::iterators::Pair;
 
-use crate::parser::{Token, Token::DateToken};
+use crate::tokenizer::{Token, Token::DateToken};
 
 #[derive(Parser)]
 #[grammar = "pest_grammar.pest"]
@@ -17,56 +17,36 @@ pub fn parse_expression(expr: &str, tokens: &Vec<Token>) -> bool {
     process_pairs(pairs, &mut Vec::new(), tokens)
 }
 
-fn eval_op(token: &Token, rule: &Pair<Rule>) -> bool {
-    match token {
-        Token::DateToken(v, f) => v == rule.as_str(),
-
-        // TODO implement these...
-        Token::StringToken(v) => { return true },
-        Token::IntegerToken(v) => { return true },
-        Token::NumberToken(v) => { return true },
-        Token::EmailToken(v) => { return true },
-        Token::IPv4Token(v) => { return true },
-        Token::IPv6Token(v) => { return true },
-        _ => unreachable!()
+fn eval_op(op: Rule, value: &str, token: &Token) -> bool {
+    match op {
+        // TODO find the nth token as given by the typeTermArg
+        eq => token == &token.new(value),
+        neq => token != &token.new(value),
+        lt => return token < &token.new(value),
+        gt => return token > &token.new(value),
+        lte => token <= &token.new(value),
+        gte => token >= &token.new(value),
+        
+        // TODO
+        //matchOp => {}
+        //inOp => {}
+        _ => return false  
     }
 }
 
 fn eval(stack: &mut Vec<Pair<Rule>>, rule: Rule, tokens: &Vec<Token>) -> bool {
+
+    let value = stack.pop().unwrap();          // simple value or comma separated value string....
+    let op = stack.pop().unwrap();
+    let typeTermArg = stack.pop().unwrap();      // n in type(n)
+    let typeTerm = stack.pop().unwrap();         // date, time, timestamp, email, ... 
+
     match rule {
         Rule::simpleExpr => {
-            // stack should have: 
-            //   pop => value
-            //   pop => op
-            //   pop => typeTermArg
-            //   pop => typeTerm
-
             println!("stack: {:?}", stack);
-
-            let value = stack.pop();
-            let op = stack.pop().unwrap();
-            let typeTermArg = stack.pop();
-            let typeTerm = stack.pop();
-
-            match op {
-                // TODO find the nth token as given by the typeTermArg
-                eq => { 
-                    //println!("value: {:?}", value.unwrap().as_str());
-                    //println!("token: {:?}", tokens[0]);
-                 
-                    return eval_op(&tokens[0], &value.unwrap());
-                },
-                neq => {},
-                lt => {},
-                gt => {},
-                lte => {},
-                gte => {},
-                matchOp => {},
-                inOp => {}
-                _ => { println!("{:?}", op) } //unreachable!("ignore for now")
-            }
+            return eval_op(op.as_rule(), value.as_str(), &tokens[0])
         },
-        Rule::containsExpr => {}
+        //Rule::containsExpr => false
         _ => unreachable!("panic lah!!")
     }
     
@@ -76,52 +56,45 @@ fn eval(stack: &mut Vec<Pair<Rule>>, rule: Rule, tokens: &Vec<Token>) -> bool {
 fn process_pairs<'a>(pairs: Pairs<'a, Rule>, stack: &mut Vec<Pair<'a, Rule>>, tokens: &Vec<Token>) -> bool {
 
     for pair in pairs {
+        let inner_rule = pair.clone();
+        println!("{:?} {:?}", inner_rule.as_rule(),  inner_rule.as_str());
+
         match pair.as_rule() {
             Rule::simpleExpr => { 
                 let inner = pair.into_inner();
-                println!("simpleExpr: {}", inner.as_str());
                 process_pairs(inner, stack, tokens);
                 return eval(stack, Rule::simpleExpr, tokens)
             },
             Rule::typeExpr => { 
                 let inner = pair.into_inner();
-                println!("typeExpr: {}", inner.as_str());               
                 process_pairs(inner, stack, tokens);
             },
             Rule::typeTerm => { 
-                println!("typeTerm: {}", pair.as_str());
                 stack.push(pair);
             },
             Rule::typeTermArg => { 
-                println!("typeTermArg: {}", pair.as_str());
                 stack.push(pair);
             },
             Rule::op => {
-                println!("op: {}", pair.as_str());
                 stack.push(pair);
             },  
             Rule::value => {
-                 println!("value: {}", pair.as_str());
                  stack.push(pair);
-                },
+            },
             Rule::andExpr => {
                 let inner = pair.into_inner();
-                println!("andExpr: {}", inner.as_str());
                 process_pairs(inner, stack, tokens);
             },
             Rule::orExpr => { 
                 let inner = pair.into_inner();
-                println!("orExpr: {}", inner.as_str());
                 process_pairs(inner, stack, tokens);
             },
             Rule::listExpr => {
                 let inner = pair.into_inner();
-                println!("listExpr: {}", inner.as_str());
                 process_pairs(inner, stack, tokens);
             }
             Rule::containsExpr => {
                 let inner = pair.into_inner();
-                println!("containsExpr: {}", inner.as_str());
                 process_pairs(inner, stack, tokens);
             },    
             _ => {
@@ -131,7 +104,7 @@ fn process_pairs<'a>(pairs: Pairs<'a, Rule>, stack: &mut Vec<Pair<'a, Rule>>, to
         } 
     }
 
-    false // TODO return the real evaluation...
+    false
 }
 
 #[cfg(test)]
@@ -140,6 +113,9 @@ fn test_parsing() {
     let tokens: Vec<Token> = vec![DateToken("1970/07/31".to_string(), "yyyy/mm/dd".to_string())];
 
     // || date(1) > 1970/07/31 && date(*) in [1980/07/31, now()]", 
+
+    //println!("{}", DateToken("1234".to_string(), "".to_string()) == DateToken("123".to_string(), "".to_string()));
+
     assert!(parse_expression("date(1) == 1970/07/31", &tokens));
 
     assert!(!parse_expression("date(1) == 1900/01/01", &tokens));
