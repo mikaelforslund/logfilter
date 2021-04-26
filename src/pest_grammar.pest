@@ -1,18 +1,12 @@
 grammar = _{ SOI ~ expr+ ~ EOI } 
 
-expr = _{
-      groupExpr  
-    | andExpr
-    | orExpr
-    | containsExpr
-    | simpleExpr
+expr = {
+   (groupedExpr | compoundExpr) ~ ((andOp | orOp) ~ (groupedExpr | compoundExpr))*
 }
 
-andExpr = { simpleExpr ~ "&&" ~ expr }
+groupedExpr = _{ "(" ~ expr ~  ")" }
 
-orExpr = { simpleExpr ~ "||" ~ expr }
-
-groupExpr =  { "(" ~ orExpr ~ ")" ~ "&&" ~ expr }
+compoundExpr = _{ simpleExpr | containsExpr }
 
 containsExpr = { typeExpr ~ inOp ~ listExpr }       // e.g. date(1) in [1970-07-31, now()] 
 
@@ -31,6 +25,10 @@ typeTermArg = { ASCII_DIGIT+ | "*" }
 listExpr = { "[" ~ value ~ ("," ~ value)* ~ "]" }   // e.g. [value, ...]
 
 WHITESPACE = _{ " " }
+
+andOp = { "&&" }
+
+orOp = { "||" }
 
 op = { gt | lt | gte | lte | eq | neq | matchOp }
 

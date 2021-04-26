@@ -1,8 +1,10 @@
 
+
+use pest::prec_climber::{Assoc, Operator, PrecClimber};
 use pest::Parser;
 use pest::iterators::Pairs;
 use pest::iterators::Pair;
-
+use lazy_static::lazy_static;
 use crate::tokenizer::{Token, Token::DateToken};
 
 #[derive(Parser)]
@@ -10,11 +12,11 @@ use crate::tokenizer::{Token, Token::DateToken};
 struct SemFilterParser;
 
 pub fn parse_expression(expr: &str, tokens: &Vec<Token>) -> bool {
-    let pairs = SemFilterParser::parse(Rule::grammar, &expr)
+    let mut grammar = SemFilterParser::parse(Rule::grammar, &expr)
         .unwrap_or_else(|e| panic!("{}", e));
 
 //    println!("{:#?}", pairs);
-    process_pairs(pairs, &mut Vec::new(), tokens)
+    process_pair(grammar.next().unwrap(), &mut Vec::new(), tokens)
 }
 
 fn eval_op(op: Rule, value: &str, token: &Token) -> bool {
@@ -35,6 +37,7 @@ fn eval_op(op: Rule, value: &str, token: &Token) -> bool {
 }
 
 fn eval(stack: &mut Vec<Pair<Rule>>, rule: Rule, tokens: &Vec<Token>) -> bool {
+    println!("stack: {:?}", stack);
 
     let value = stack.pop().unwrap();          // simple value or comma separated value string....
     let op = stack.pop().unwrap();
@@ -43,7 +46,6 @@ fn eval(stack: &mut Vec<Pair<Rule>>, rule: Rule, tokens: &Vec<Token>) -> bool {
 
     match rule {
         Rule::simpleExpr => {
-            println!("stack: {:?}", stack);
             return eval_op(op.as_rule(), value.as_str(), &tokens[0])
         },
         //Rule::containsExpr => false
@@ -53,55 +55,67 @@ fn eval(stack: &mut Vec<Pair<Rule>>, rule: Rule, tokens: &Vec<Token>) -> bool {
     false
 }
 
-fn process_pairs<'a>(pairs: Pairs<'a, Rule>, stack: &mut Vec<Pair<'a, Rule>>, tokens: &Vec<Token>) -> bool {
+lazy_static! {
+    static ref CLIMBER: PrecClimber<Rule> = {
+        PrecClimber::new(vec![
+            Operator::new(Rule::andOp, Assoc::Left) | Operator::new(Rule::orOp, Assoc::Left),
+        ])    
+    };
+}
 
-    for pair in pairs {
-        let inner_rule = pair.clone();
-        println!("{:?} {:?}", inner_rule.as_rule(),  inner_rule.as_str());
+fn process_pair<'a>(pair: Pair<'a, Rule>, stack: &mut Vec<Pair<'a, Rule>>, tokens: &Vec<Token>) -> bool {
 
-        match pair.as_rule() {
-            Rule::simpleExpr => { 
-                let inner = pair.into_inner();
-                process_pairs(inner, stack, tokens);
-                return eval(stack, Rule::simpleExpr, tokens)
-            },
-            Rule::typeExpr => { 
-                let inner = pair.into_inner();
-                process_pairs(inner, stack, tokens);
-            },
-            Rule::typeTerm => { 
-                stack.push(pair);
-            },
-            Rule::typeTermArg => { 
-                stack.push(pair);
-            },
-            Rule::op => {
-                stack.push(pair);
-            },  
-            Rule::value => {
-                 stack.push(pair);
-            },
-            Rule::andExpr => {
-                let inner = pair.into_inner();
-                process_pairs(inner, stack, tokens);
-            },
-            Rule::orExpr => { 
-                let inner = pair.into_inner();
-                process_pairs(inner, stack, tokens);
-            },
-            Rule::listExpr => {
-                let inner = pair.into_inner();
-                process_pairs(inner, stack, tokens);
-            }
-            Rule::containsExpr => {
-                let inner = pair.into_inner();
-                process_pairs(inner, stack, tokens);
-            },    
-            _ => {
-                let inner = pair.into_inner();
-                println!("_: {}", inner.as_str());
-            }
-        } 
+    let atom = |pair| process_pair(pair, stack, tokens);
+    let infix = |lhs, op: Pair<Rule>, rhs| match op.as_rule() {
+        Rule::andOp => {
+            //let inner = pair.into_inner();
+            println!("andOp: lhs: {}, rhs: {}", lhs, rhs);
+            return lhs && rhs;
+        },
+        Rule::orOp => { 
+            println!("orOp: lhs: {}, rhs: {}", lhs, rhs);
+            return lhs || rhs;
+        },
+        _ => unreachable!(),
+    };
+
+    let inner_rule = pair.clone();
+    println!("{:?} {:?}", inner_rule.as_rule(),  inner_rule.as_str());
+
+    match pair.as_rule() {
+        Rule::expr => {
+            let pairs = pair.into_inner();
+            return CLIMBER.climb(pairs, atom, infix);
+        },
+        Rule::simpleExpr => { 
+            let v: Vec<bool> = pair.into_inner().map(atom).collect();
+            return eval(stack, Rule::simpleExpr, tokens)
+        },
+        Rule::containsExpr => {
+            return process_pair(pair.into_inner().next().unwrap(), stack, tokens);
+        },    
+        Rule::typeExpr => { 
+            let v: Vec<bool> = pair.into_inner().map(atom).collect();
+        },
+        Rule::typeTerm => { 
+            stack.push(pair);
+        },
+        Rule::typeTermArg => { 
+            stack.push(pair);
+        },
+        Rule::op => {
+            stack.push(pair);
+        },  
+        Rule::value => {
+            stack.push(pair);
+        },
+        Rule::listExpr => {
+            return process_pair(pair.into_inner().next().unwrap(), stack, tokens);
+        },
+        _ => {
+            let inner = pair.into_inner();
+            println!("_: {}", inner.as_str());
+        }
     }
 
     false
@@ -116,7 +130,8 @@ fn test_parsing() {
 
     //println!("{}", DateToken("1234".to_string(), "".to_string()) == DateToken("123".to_string(), "".to_string()));
 
-    assert!(parse_expression("date(1) == 1970/07/31", &tokens));
+    //  && date(1) == 1970/07/31 || date(1) == 1970/07/31
+    assert!(parse_expression("date(1) == 1970/07/31 && date(1) == 1970/07/31 || date(1) == 1970/07/30", &tokens));
 
     assert!(!parse_expression("date(1) == 1900/01/01", &tokens));
 }
