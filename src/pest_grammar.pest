@@ -1,45 +1,47 @@
 grammar = _{ SOI ~ expr+ ~ EOI } 
 
 expr = {
-   (groupedExpr | compoundExpr) ~ ((andOp | orOp) ~ (groupedExpr | compoundExpr))*
+   (grouped_expr | compound_expr) ~ ((and_op | or_op) ~ (grouped_expr | compound_expr))*
 }
 
-groupedExpr = _{ "(" ~ expr ~  ")" }
+grouped_expr = _{ "(" ~ expr ~  ")" }
 
-compoundExpr = _{ simpleExpr | containsExpr }
+compound_expr = _{ simple_expr | contains_expr }
 
-containsExpr = { typeExpr ~ inOp ~ listExpr }       // e.g. date(1) in [1970-07-31, now()] 
+contains_expr = { type_expr ~ in_op ~ list_expr }       // e.g. date(1) in [1970-07-31, now()] 
 
-simpleExpr = { typeExpr ~ op ~ value }              // e.g. date(1) > 1970-07-31, internal check for compatibility needed...
+simple_expr = { type_expr ~ op ~ value }              // e.g. date(1) > 1970-07-31, internal check for compatibility needed...
 
-typeExpr = { typeTerm ~ "(" ~ typeTermArg ~ ")" }   // e.g. date(1) or date(*)
+type_expr = { type_term ~ "(" ~ type_term_arg ~ ")" }   // e.g. date(1) or date(*)
 
-typeTerm = { 
+type_term = { 
     "date" | "time"| "timestamp" | "boolean" | "ipv4" 
   | "ipv6" | "semver" | "email" | "loglevel" | "number" 
   | "integer" | "float" 
 }  
 
-typeTermArg = { ASCII_DIGIT+ | "*" }
+type_term_arg = { ASCII_DIGIT+ | "*" }
 
-listExpr = { "[" ~ value ~ ("," ~ value)* ~ "]" }   // e.g. [value, ...]
+list_expr = { "[" ~ list_member_expr ~ "]" }   // e.g. [value, ...]
+
+list_member_expr = { value ~ ("," ~ value)* }
 
 WHITESPACE = _{ " " }
 
-andOp = { "&&" }
+and_op = { "&&" }
 
-orOp = { "||" }
+or_op = { "||" }
 
-op = { gt | lt | gte | lte | eq | neq | matchOp }
+op = { gt | lt | gte | lte | eq | neq | match_op }
 
 gt = { ">" }
 lt = { "<" }
 gte = { ">=" }
 lte = { "<=" } 
-eq = { "== " }
+eq = { "==" }
 neq = { "!=" }
-matchOp = { "match" }
-inOp = { "in" }
+match_op = { "match" }
+in_op = { "in" }
 
 value = { string } 
 

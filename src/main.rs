@@ -2,7 +2,7 @@
 mod tokenizer;
 mod grammar;
 
-use tokenizer::{ parse, full_lines, Token };
+use tokenizer::{ create_token, full_lines, Token };
 use std::io::{ self };
 
 extern crate pest;
@@ -15,7 +15,7 @@ fn main() -> Result<(), io::Error> {
         let line = line?;
 
         for token in line.split_whitespace() {
-            let token:Token = parse(&token.to_string());
+            let token:Token = create_token(&token.to_string());
             println!("{:?}", token);
         }
 
