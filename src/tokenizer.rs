@@ -8,7 +8,11 @@ use chrono::{NaiveDate, Utc};
 /// 
 #[derive(Debug, PartialEq, PartialOrd)]
 pub enum Token {
-    StringToken(String, String),
+    /// The implicit parameters indicate the following:
+    ///   1. symbolic name (e.g. date, string, email etc) 
+    ///   2. the actual value from the source data
+    ///   3. where applicable a format speficier (e.g. dates) 
+    StringToken(String, String),    
     NumberToken(String, f64),
     IntegerToken(String, u64),
     EmailToken(String, String),
