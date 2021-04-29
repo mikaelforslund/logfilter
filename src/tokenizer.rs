@@ -34,15 +34,15 @@ impl Token {
         }
     }
 
-    pub fn is_match(&self, _str: &str) -> bool {
+    pub fn is_type(&self, str: &str) -> bool {
         match &*self {
-            Token::DateToken(_str, _, _) => true,
-            Token::EmailToken(_str, _) => true,
-            Token::NumberToken(_str, _) => true,
-            Token::IntegerToken(_str, _) => true,
-            Token::Ipv4Token(_str, _) => true,
-            Token::Ipv6Token(_str, _) => true,
-            _ => false
+            Token::DateToken(s, _, _) => str == s,
+            Token::EmailToken(s, _) => return str == s,
+            Token::NumberToken(s, _) => str == s,
+            Token::IntegerToken(s, _) => str == s,
+            Token::Ipv4Token(s, _) => str == s,
+            Token::Ipv6Token(s, _) => str == s,
+            Token::StringToken(s, _) => str == s,
         }
     }
 }
@@ -83,13 +83,48 @@ pub fn full_lines(mut input: impl BufRead) -> impl Iterator<Item = io::Result<St
 }
 
 #[cfg(test)]
-#[test]
-fn test_parse_token() {       
-    assert!(matches!(create_token("test"), Token::StringToken(_, _)));
-    assert!(matches!(create_token("3.14"), Token::NumberToken(_, _)));
-    assert!(matches!(create_token("10"), Token::IntegerToken(_, _)));
-    assert!(matches!(create_token("test@gmail.com"), Token::EmailToken(_, _)));
-    assert!(matches!(create_token("127.0.0.1"), Token::Ipv4Token(_, _)));
-    assert!(matches!(create_token("1762:0:0:0:0:B03:1:AF18"), Token::Ipv6Token(_, _)));
-    assert!(matches!(create_token("1970-07-31"), Token::DateToken(_, _, _)));
+#[cfg(test)]
+mod tests {
+    use crate::{create_token, Token};
+    use std::io::Write;
+
+    fn init() {
+        let _ = env_logger::builder()
+            .format(|buf, record| writeln!(buf, "{}", record.args()))
+            .is_test(true).try_init();
+    }
+
+    #[test]
+    fn test_parse_token() {       
+        init();
+
+        assert!(matches!(create_token("test"), Token::StringToken(_, _)));
+        assert!(matches!(create_token("3.14"), Token::NumberToken(_, _)));
+        assert!(matches!(create_token("10"), Token::IntegerToken(_, _)));
+        assert!(matches!(create_token("test@gmail.com"), Token::EmailToken(_, _)));
+        assert!(matches!(create_token("127.0.0.1"), Token::Ipv4Token(_, _)));
+        assert!(matches!(create_token("1762:0:0:0:0:B03:1:AF18"), Token::Ipv6Token(_, _)));
+        assert!(matches!(create_token("1970-07-31"), Token::DateToken(_, _, _)));
+    }
+
+    #[test]
+    fn test_token_is_match() {       
+        init();
+
+        assert!(create_token("test").is_type("string"));
+        assert!(create_token("3.14").is_type("number"));
+        assert!(create_token("10").is_type("integer"));
+        assert!(create_token("test@gmail.com").is_type("email"));
+        assert!(create_token("127.0.0.1").is_type("ipv4"));
+        assert!(create_token("1762:0:0:0:0:B03:1:AF18").is_type("ipv6"));
+        assert!(create_token("1970-07-31").is_type("date"));
+
+        assert!( !create_token("test").is_type("s"));
+        assert!( !create_token("3.14").is_type("n"));
+        assert!( !create_token("10").is_type("i"));
+        assert!( !create_token("test@gmail.com").is_type("e"));
+        assert!( !create_token("127.0.0.1").is_type("i"));
+        assert!( !create_token("1762:0:0:0:0:B03:1:AF18").is_type("i"));
+        assert!( !create_token("1970-07-31").is_type("d"));
+    }
 }

@@ -5,9 +5,7 @@ mod grammar;
 use tokenizer::{ create_token, full_lines, Token };
 use grammar:: { parse_expression };
 use std::io::{ self, Write };
-use log::{info};
-use simple_logger::SimpleLogger;
-use log::LevelFilter;
+use log::{trace};
 use std::{env, process};
 
 extern crate pest;
@@ -15,16 +13,16 @@ extern crate pest;
 extern crate pest_derive;
 
 fn main() -> Result<(), io::Error> {
-    SimpleLogger::new().with_level(LevelFilter::Trace).init().unwrap();
+    env_logger::init();
 
     /////////////////// TODO move this to clap... this is just for testing... 
     let args: Vec<String> = env::args().collect();   
 
     if args.len() == 1 {
-        info!("\n\nUsage: semfilter [expr] < FILE\n");
+        println!("\n\nUsage: semfilter [expr] < FILE\n");
         process::exit(-1);
     }
-    info!("arg: {:?}", args[1]);
+    trace!("arg: {:?}", args[1]);
     ////////////////////
 
     // read lines from stdin, tokenizes the words using regexps and finally writes same line to stdout if it 
@@ -37,7 +35,7 @@ fn main() -> Result<(), io::Error> {
             .map(|word| create_token(&word))
             .collect();
 
-        info!("main.tokens: {:?}", tokens);
+        trace!("main.tokens: {:?}", tokens);
 
         if parse_expression(&args[1], &tokens) {
             let stdout = io::stdout();

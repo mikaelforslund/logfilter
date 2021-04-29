@@ -17,7 +17,7 @@ type_expr = { type_term ~ "(" ~ type_term_arg ~ ")" }   // e.g. date(1) or date(
 type_term = { 
     "date" | "time"| "timestamp" | "boolean" | "ipv4" 
   | "ipv6" | "semver" | "email" | "loglevel" | "number" 
-  | "integer" | "float" 
+  | "integer" | "float" | "string"
 }  
 
 type_term_arg = { ASCII_DIGIT+ | "*" }
