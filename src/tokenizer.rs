@@ -4,6 +4,8 @@ use regex::Regex;
 use lazy_static::lazy_static;
 use chrono::{NaiveDate, Utc};
 
+/// Semfilter will be able to handle these types.
+/// 
 #[derive(Debug, PartialEq, PartialOrd)]
 pub enum Token {
     StringToken(String, String),
@@ -16,6 +18,7 @@ pub enum Token {
 }
 
 impl Token {
+    /// Implements a copy factory method for a Token 
     pub fn new(&self, value: &str) -> Token {
         match &*self {
             Token::DateToken(t, _, f) => { 
@@ -34,6 +37,7 @@ impl Token {
         }
     }
 
+    /// Checks if a token is of a particular type 
     pub fn is_type(&self, str: &str) -> bool {
         match &*self {
             Token::DateToken(s, _, _) => str == s,

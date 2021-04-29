@@ -12,6 +12,11 @@ extern crate pest;
 #[macro_use]
 extern crate pest_derive;
 
+/// The main program loop which basically reads lines from stdin, tokenizes the words and runs them through the 
+/// parsed expression and if evaluates to true, writes the same line to stdout. Logging can be configured by 
+/// setting the envvariable RUST_LOG to any in [trace, info, warn, error] as described here 
+/// [env_logger](https://crates.io/crates/env_logger) 
+/// 
 fn main() -> Result<(), io::Error> {
     env_logger::init();
 
