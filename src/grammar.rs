@@ -19,24 +19,24 @@ struct SemFilterParser;
 /// 
 /// parse_expression("date(1) in [1970-07-31, now()]", &tokens)
 /// ```
-pub fn parse_expression(expr: &str, tokens: &Vec<Token>) -> bool {
+pub fn parse_expression(expr: &str, tokens: &Vec<Token>) -> Result<bool, String> {
     let mut grammar = SemFilterParser::parse(Rule::grammar, &expr)
         .unwrap_or_else(|e| panic!("{}", e));
 
     process_pair(expr, grammar.next().unwrap(), &mut Vec::new(), tokens)
 }
 
-/// Evaluates two tokens based on its infix operator and returns a bool. Supported operators 
+/// Evaluates two tokens based on its infix operator and returns Result. Supported operators 
 /// are defined in the grammar file. 
 /// 
-fn eval_op(op: Rule, value: Pair<Rule>, token: &Token) -> bool {
+fn eval_op(op: Rule, value: Pair<Rule>, token: &Token) -> Result<bool, String> {
     match op {
-        Rule::eq => token == &token.new(value.as_str()),
-        Rule::neq => token != &token.new(value.as_str()),
-        Rule::lt => return token < &token.new(value.as_str()),
-        Rule::gt => return token > &token.new(value.as_str()),
-        Rule::lte => token <= &token.new(value.as_str()),
-        Rule::gte => token >= &token.new(value.as_str()),
+        Rule::eq => Ok(token == &token.new(value.as_str())),
+        Rule::neq => Ok(token != &token.new(value.as_str())),
+        Rule::lt => Ok(token < &token.new(value.as_str())),
+        Rule::gt => Ok(token > &token.new(value.as_str())),
+        Rule::lte => Ok(token <= &token.new(value.as_str())),
+        Rule::gte => Ok(token >= &token.new(value.as_str())),
         
         // TODO
         //match_op => {},
@@ -44,16 +44,16 @@ fn eval_op(op: Rule, value: Pair<Rule>, token: &Token) -> bool {
             trace!("value: {:?}", value);
             let tokens:Vec<Token> = value.into_inner().map(|rule| token.new(rule.as_str())).collect();
             trace!("tokens: {:?}", tokens);
-            return tokens.contains(&token);
+            return Ok(tokens.contains(&token));
         },
-        _ => false 
+        _ => Ok(false) 
     }
 }
 
 /// Evaluates a tokenized string expression against a set of rules derived from the semfile grammar 
 /// [pest_grammar.pest](pest_grammar.pest)
 /// 
-fn eval(expr: &str, stack: &mut Vec<Pair<Rule>>, rule: Rule, tokens: &Vec<Token>) -> bool {
+fn eval(expr: &str, stack: &mut Vec<Pair<Rule>>, rule: Rule, tokens: &Vec<Token>) -> Result<bool, String> {
     trace!("eval.stack: {:?}", stack);
 
     let value = stack.pop().unwrap();           // simple value or comma separated value string....
@@ -73,19 +73,19 @@ fn eval(expr: &str, stack: &mut Vec<Pair<Rule>>, rule: Rule, tokens: &Vec<Token>
     trace!("eval.type_term_arg {:?}", n);
 
     if valid_tokens.len() < n {
-        println!("Invalid type index {}({}) in expression '{}' ({} tokens found, 0-index)", 
-            type_term.as_str(), n, expr, valid_tokens.len());
-    } else {
-        if !valid_tokens.is_empty() {
+        return Err(format!("Invalid type index {}({}) in expression '{}' ({} tokens found, 0-index)", 
+            type_term.as_str(), n, expr, valid_tokens.len()));
+    }
+
+    if !valid_tokens.is_empty() {
             match rule {
                 Rule::simple_expr => return eval_op(op.as_rule(), value, valid_tokens[n]),
                 Rule::contains_expr => return eval_op(op.as_rule(), value, valid_tokens[n]),
-                _ => unreachable!("Unexpected rule matched!")
+                _ => return Err(String::from("Unexpected rule matched!")),
             }
-        }
     }
     
-    false
+    Ok(false)
 }
 
 lazy_static! {
@@ -97,27 +97,32 @@ lazy_static! {
     };
 }
 
-/// Internal function that processes a pest grammar pair and evaluates to true or false. 
+/// Internal function that processes a pest grammar pair and evaluates to Result. 
 /// 
 /// * `expr` - The original expression from which the tokens are genered
 /// * `pair` - One grammar pair
 /// * `stack` - An expression evaluation stack, LIFO
 /// * `tokens` - A list of tokens to evaluate    
 /// 
-fn process_pair<'a>(expr: &str, pair: Pair<'a, Rule>, stack: &mut Vec<Pair<'a, Rule>>, tokens: &Vec<Token>) -> bool {
+fn process_pair<'a>(expr: &str, pair: Pair<'a, Rule>, stack: &mut Vec<Pair<'a, Rule>>, tokens: &Vec<Token>) 
+    -> Result<bool, String> {
    
     let atom = |pair| process_pair(expr, pair, stack, tokens);
 
-    let infix = |lhs, op: Pair<Rule>, rhs| match op.as_rule() {
-        Rule::and_op => {
-            trace!("andOp: lhs: {}, rhs: {}", lhs, rhs);
-            return lhs && rhs;
-        },
-        Rule::or_op => { 
-            trace!("orOp: lhs: {}, rhs: {}", lhs, rhs);
-            return lhs || rhs;
-        },
-        _ => unreachable!(),
+    let infix = |lhs: Result<bool, String>, op: Pair<Rule>, rhs: Result<bool, String>| 
+        -> Result<bool, String> {
+
+        match op.as_rule() {
+            Rule::and_op => {
+                trace!("andOp: lhs: {:?}, rhs: {:?}", lhs, rhs);
+                Ok(lhs? && rhs?)
+            },
+            Rule::or_op => { 
+                trace!("orOp: lhs: {:?}, rhs: {:?}", lhs, rhs);
+                Ok(lhs? || rhs?)
+            },
+            _ => Err(String::from("Unexpected rule found!"))
+       }
     };
 
     let inner_rule = pair.clone();
@@ -146,7 +151,7 @@ fn process_pair<'a>(expr: &str, pair: Pair<'a, Rule>, stack: &mut Vec<Pair<'a, R
         _ => trace!("_: {}", pair.as_str())
     }
 
-    false
+    Ok(false)
 }
 
 #[cfg(test)]
@@ -169,14 +174,14 @@ mod tests {
             create_token("42"),
             create_token("test")];
 
-        //assert!(parse_expression("date(0) == 1970-07-31", &tokens));
-        //assert!(parse_expression("date(1) == 1900-01-01", &tokens));
+        assert!(parse_expression("date(0) == 1970-07-31", &tokens).is_ok());
+        assert!(parse_expression("date(1) == 1900-01-01", &tokens).is_ok());
 
         // should be true for all tokens...
-        assert!( !parse_expression("date(*) == 1900-01-01", &tokens));
+        //assert!(parse_expression("date(*) == 1900-01-01", &tokens).is_err());
 
         // should fail
-        //assert!( !parse_expression("date(9) == 1900-01-01", &tokens));
+        assert!(parse_expression("date(9) == 1900-01-01", &tokens).is_err());
     }
 
     #[test]
@@ -185,12 +190,12 @@ mod tests {
 
         let tokens: Vec<Token> = vec![create_token("1970-07-31")];
 
-        assert!(parse_expression("date(0) in [1970-07-31, now()]", &tokens));
-        assert!(parse_expression("date(0) == 1970-07-31 && date(0) == 1970-07-31 || date(0) == 1970-07-31", &tokens));
-        assert!(parse_expression("date(0) == 1970-07-31 && date(0) == 1970-07-31 || date(0) == 1970-07-30", &tokens));
+        assert!(parse_expression("date(0) in [1970-07-31, now()]", &tokens).is_ok());
+        assert!(parse_expression("date(0) == 1970-07-31 && date(0) == 1970-07-31 || date(0) == 1970-07-31", &tokens).is_ok());
+        assert!(parse_expression("date(0) == 1970-07-31 && date(0) == 1970-07-31 || date(0) == 1970-07-30", &tokens).is_ok());
 
         // these are negative tests....
-        assert!( !parse_expression("date(0) == 1970-07-31 && date(0) == 1970-07-30 || date(0) == 1970-07-30", &tokens));
-        assert!( !parse_expression("date(0) == 1900-01-01", &tokens));
+        assert!(parse_expression("date(0) == 1970-07-31 && date(0) == 1970-07-30 || date(0) == 1970-07-30", &tokens).unwrap() == false);
+        assert!(parse_expression("date(0) == 1900-01-01", &tokens).unwrap() == false);
     }
 }
