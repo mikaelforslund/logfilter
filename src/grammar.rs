@@ -30,6 +30,8 @@ pub fn parse_expression(expr: &str, tokens: &Vec<Token>) -> Result<bool, String>
 /// are defined in the grammar file. 
 /// 
 fn eval_op(op: Rule, value: Pair<Rule>, token: &Token) -> Result<bool, String> {
+    trace!("op {:?}, value: {:?}, tokens {:?}", op, value, token);
+
     match op {
         Rule::eq => Ok(token == &token.new(value.as_str())),
         Rule::neq => Ok(token != &token.new(value.as_str())),
@@ -41,9 +43,7 @@ fn eval_op(op: Rule, value: Pair<Rule>, token: &Token) -> Result<bool, String> {
         // TODO
         //match_op => {},
         Rule::in_op =>  {             
-            trace!("value: {:?}", value);
             let tokens:Vec<Token> = value.into_inner().map(|rule| token.new(rule.as_str())).collect();
-            trace!("tokens: {:?}", tokens);
             return Ok(tokens.contains(&token));
         },
         _ => Ok(false) 
@@ -68,24 +68,39 @@ fn eval(expr: &str, stack: &mut Vec<Pair<Rule>>, rule: Rule, tokens: &Vec<Token>
         .filter(|&token| token.is_type(type_term.as_str()))
         .collect();
 
-    trace!("evail.token found {:?}", valid_tokens);    
-    let n = type_term_arg.as_str().parse::<usize>().unwrap();
-    trace!("eval.type_term_arg {:?}", n);
+    trace!("tokens found {:?}", valid_tokens);
 
-    if valid_tokens.len() < n {
-        return Err(format!("Invalid type index {}({}) in expression '{}' ({} tokens found, 0-index)", 
-            type_term.as_str(), n, expr, valid_tokens.len()));
+    if valid_tokens.is_empty() {
+        return Ok(false);
     }
 
-    if !valid_tokens.is_empty() {
-            match rule {
-                Rule::simple_expr => return eval_op(op.as_rule(), value, valid_tokens[n]),
+    match type_term_arg.as_str() {
+        "*" => {
+            // eval all tokens that matches the type_term, e.g: 
+            //   true for: date(*) == 1900-01-01    for tokens:[1900-01-01, 1900-01-01]
+            //   false for: date(*) == 1900-01-01   for tokens:[1970-07-31, 1900-01-01]
+            return Ok(valid_tokens.into_iter().all(|t| eval_op(op.as_rule(), value.clone(), t).unwrap()));
+        },
+        index => {
+            let n = index.parse::<usize>().unwrap();
+
+            if valid_tokens.len() < n {
+                return Err(format!("Invalid type index {}({}) in expression '{}' ({} tokens found, 0-index)", 
+                    type_term.as_str(), n, expr, valid_tokens.len()));
+            }          
+
+            match rule {                
+                // eval the roken that matched  the type_term, e.g: 
+                //   true for: date(1) == 1900-01-01    for tokens:[1900-01-01, 1970-07-31]
+                //   false for: date(2) == 1900-01-01   for tokens:[1900-01-01, 1970-07-31]
+                Rule::simple_expr => {
+                    return eval_op(op.as_rule(), value, valid_tokens[n])   
+                }
                 Rule::contains_expr => return eval_op(op.as_rule(), value, valid_tokens[n]),
                 _ => return Err(String::from("Unexpected rule matched!")),
-            }
-    }
-    
-    Ok(false)
+            } 
+        }
+    } 
 }
 
 lazy_static! {
@@ -177,12 +192,23 @@ mod tests {
         assert!(parse_expression("date(0) == 1970-07-31", &tokens).is_ok());
         assert!(parse_expression("date(1) == 1900-01-01", &tokens).is_ok());
 
-        // should be true for all tokens...
-        //assert!(parse_expression("date(*) == 1900-01-01", &tokens).is_err());
-
         // should fail
         assert!(parse_expression("date(9) == 1900-01-01", &tokens).is_err());
     }
+
+    #[test]
+    fn test_multiple_token_eval() {    
+        init();
+
+        let tokens: Vec<Token> = vec![create_token("1970-07-31"), create_token("1900-01-01"), create_token("test")];
+ 
+        assert!(parse_expression("date(*) == 1900-01-01", &tokens).unwrap() == false);
+
+        let tokens: Vec<Token> = vec![create_token("1970-07-31"), create_token("1970-07-31"), create_token("test")];
+ 
+        assert!(parse_expression("date(*) == 1970-07-31", &tokens).unwrap() == true);
+    }
+
 
     #[test]
     fn test_parsing_should_pass() {
