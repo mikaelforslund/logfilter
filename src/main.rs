@@ -42,10 +42,14 @@ fn main() -> Result<(), io::Error> {
 
         trace!("main.tokens: {:?}", tokens);
 
-        if parse_expression(&args[1], &tokens).is_ok() {
-            let stdout = io::stdout();
-            let mut handle = stdout.lock();
-            handle.write_all(line.as_bytes())?;
+        match parse_expression(&args[1], &tokens) {            
+            Ok(true) => {                
+                let stdout = io::stdout();
+                let mut handle = stdout.lock();
+                handle.write_all(line.as_bytes())?;
+            },
+            Err(e) => println!("{:?}", e),
+            _ => {}
         }
     }
 
