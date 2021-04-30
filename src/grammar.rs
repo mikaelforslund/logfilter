@@ -20,10 +20,10 @@ struct SemFilterParser;
 /// parse_expression("date(1) in [1970-07-31, now()]", &tokens)
 /// ```
 pub fn parse_expression(expr: &str, tokens: &Vec<Token>) -> Result<bool, String> {
-    let mut grammar = SemFilterParser::parse(Rule::grammar, &expr)
-        .unwrap_or_else(|e| panic!("{}", e));
-
-    process_grammar(expr, grammar.next().unwrap(), &mut Vec::new(), tokens)
+    match SemFilterParser::parse(Rule::grammar, &expr) {
+        Ok(mut grammar) => process_grammar(expr, grammar.next().unwrap(), &mut Vec::new(), tokens),
+        _ => Err(String::from("Missing expression!")),
+    }
 }
 
 /// Evaluates two tokens based on its infix operator and returns Result. Supported operators 
@@ -40,7 +40,6 @@ fn eval_op(op: Rule, value: Pair<Rule>, token: &Token) -> Result<bool, String> {
         Rule::lte => Ok(token <= &token.new(value.as_str())),
         Rule::gte => Ok(token >= &token.new(value.as_str())),
         
-        // TODO
         //match_op => {},
         Rule::in_op =>  {             
             let tokens:Vec<Token> = value.into_inner().map(|rule| token.new(rule.as_str())).collect();
@@ -178,6 +177,16 @@ mod tests {
         let _ = env_logger::builder()
             .format(|buf, record| writeln!(buf, "{}", record.args()))
             .is_test(true).try_init();
+    }
+
+    #[test]
+    fn test_empty_tokens() {
+        assert!(parse_expression("date(0) == 1970-07-31", &vec!()).is_ok());
+    }
+
+    #[test]
+    fn test_empty_expressions() {    
+        assert!(parse_expression("", &vec!()).is_err());
     }
 
     #[test]
