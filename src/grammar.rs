@@ -23,7 +23,7 @@ pub fn parse_expression(expr: &str, tokens: &Vec<Token>) -> Result<bool, String>
     let mut grammar = SemFilterParser::parse(Rule::grammar, &expr)
         .unwrap_or_else(|e| panic!("{}", e));
 
-    process_pair(expr, grammar.next().unwrap(), &mut Vec::new(), tokens)
+    process_grammar(expr, grammar.next().unwrap(), &mut Vec::new(), tokens)
 }
 
 /// Evaluates two tokens based on its infix operator and returns Result. Supported operators 
@@ -90,7 +90,7 @@ fn eval(expr: &str, stack: &mut Vec<Pair<Rule>>, rule: Rule, tokens: &Vec<Token>
             }          
 
             match rule {                
-                // eval the roken that matched  the type_term, e.g: 
+                // eval the token that matched  the type_term, e.g: 
                 //   true for: date(1) == 1900-01-01    for tokens:[1900-01-01, 1970-07-31]
                 //   false for: date(2) == 1900-01-01   for tokens:[1900-01-01, 1970-07-31]
                 Rule::simple_expr => {
@@ -119,10 +119,10 @@ lazy_static! {
 /// * `stack` - An expression evaluation stack, LIFO
 /// * `tokens` - A list of tokens to evaluate    
 /// 
-fn process_pair<'a>(expr: &str, pair: Pair<'a, Rule>, stack: &mut Vec<Pair<'a, Rule>>, tokens: &Vec<Token>) 
+fn process_grammar<'a>(expr: &str, pair: Pair<'a, Rule>, stack: &mut Vec<Pair<'a, Rule>>, tokens: &Vec<Token>) 
     -> Result<bool, String> {
    
-    let atom = |pair| process_pair(expr, pair, stack, tokens);
+    let atom = |pair| process_grammar(expr, pair, stack, tokens);
 
     let infix = |lhs: Result<bool, String>, op: Pair<Rule>, rhs: Result<bool, String>| 
         -> Result<bool, String> {
