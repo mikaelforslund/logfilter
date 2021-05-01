@@ -24,7 +24,7 @@ pub enum Token {
 impl Token {
     /// Implements a copy factory method for a Token 
     pub fn new(&self, value: &str) -> Token {
-        match &*self {
+        match &*self {            
             Token::DateToken(t, _, f) => { 
                 if value == "now()".to_string() {
                     Token::DateToken(String::from(t), Utc::now().naive_utc().date(), f.to_string())
@@ -41,17 +41,29 @@ impl Token {
         }
     }
 
-    /// Checks if a token is of a particular type 
-    pub fn is_type(&self, str: &str) -> bool {
+    fn get_value_tuple(&self) -> (String, String) {
         match &*self {
-            Token::DateToken(s, _, _) => str == s,
-            Token::EmailToken(s, _) => return str == s,
-            Token::NumberToken(s, _) => str == s,
-            Token::IntegerToken(s, _) => str == s,
-            Token::Ipv4Token(s, _) => str == s,
-            Token::Ipv6Token(s, _) => str == s,
-            Token::StringToken(s, _) => str == s,
+            Token::DateToken(t, s, f) => (t.to_string(), s.format(f.as_str()).to_string()),
+            Token::EmailToken(t, s) => (t.to_string(), s.to_string()),
+            Token::NumberToken(t, s) => (t.to_string(), s.to_string()),
+            Token::IntegerToken(t, s) => (t.to_string(), s.to_string()),
+            Token::Ipv4Token(t, s) => (t.to_string(), s.to_string()),
+            Token::Ipv6Token(t, s) => (t.to_string(), s.to_string()),
+            Token::StringToken(t, s) => (t.to_string(), s.to_string()),
         }
+    }
+
+    /// Checks if a token is of a particular type 
+    pub fn is_type(&self, str: &str) -> bool {        
+        let (t, _) = self.get_value_tuple();
+        t == str
+    }
+
+    pub fn is_match(&self, regex_val: &str) -> bool {
+        //let v = self.to_string();
+        let (_, v) = self.get_value_tuple();
+        //println!("v: {:?}", v);
+        return Regex::new(regex_val).unwrap().is_match(v.as_str());
     }
 }
 

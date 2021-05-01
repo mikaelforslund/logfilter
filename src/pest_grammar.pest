@@ -47,4 +47,4 @@ value = { string }
 
 string = _{ char* }
 
-char = _{ ASCII_ALPHANUMERIC | "." | "_" | "-" | "/" | "()" | ":" }
+char = _{ ASCII_ALPHANUMERIC | "." | "_" | "-" | "/" | "\\" | "{" | "}" | "^" | "$" |  "()" | ":" }

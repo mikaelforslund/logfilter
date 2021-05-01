@@ -20,9 +20,10 @@ struct SemFilterParser;
 /// parse_expression("date(1) in [1970-07-31, now()]", &tokens)
 /// ```
 pub fn parse_expression(expr: &str, tokens: &Vec<Token>) -> Result<bool, String> {
+    
     match SemFilterParser::parse(Rule::grammar, &expr) {
         Ok(mut grammar) => process_grammar(grammar.next().unwrap(), &mut Vec::new(), tokens),
-        _ => Err(String::from("Missing expression!")),
+        Err(e) => Err(e.to_string()),
     }
 }
 
@@ -40,7 +41,9 @@ fn eval_op(op: Rule, value: Pair<Rule>, token: &Token) -> Result<bool, String> {
         Rule::lte => Ok(token <= &token.new(value.as_str())),
         Rule::gte => Ok(token >= &token.new(value.as_str())),
         
-        //match_op => {},
+        Rule::match_op => {
+            return Ok(token.is_match(value.as_str()))
+        },
         Rule::in_op =>  {             
             let tokens:Vec<Token> = value.into_inner().map(|rule| token.new(rule.as_str())).collect();
             return Ok(tokens.contains(&token));
@@ -201,7 +204,7 @@ mod tests {
         assert!(parse_expression("date(1) == 1900-01-01", &tokens).is_ok());
 
         // should fail
-        assert!(parse_expression("date(9) == 1900-01-01", &tokens).is_err());
+        assert!(parse_expression("date(9) == 1900-01-01", &tokens).unwrap() == false);
     }
 
     #[test]
