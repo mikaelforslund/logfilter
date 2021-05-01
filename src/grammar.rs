@@ -21,7 +21,7 @@ struct SemFilterParser;
 /// ```
 pub fn parse_expression(expr: &str, tokens: &Vec<Token>) -> Result<bool, String> {
     match SemFilterParser::parse(Rule::grammar, &expr) {
-        Ok(mut grammar) => process_grammar(expr, grammar.next().unwrap(), &mut Vec::new(), tokens),
+        Ok(mut grammar) => process_grammar(grammar.next().unwrap(), &mut Vec::new(), tokens),
         _ => Err(String::from("Missing expression!")),
     }
 }
@@ -52,7 +52,7 @@ fn eval_op(op: Rule, value: Pair<Rule>, token: &Token) -> Result<bool, String> {
 /// Evaluates a tokenized string expression against a set of rules derived from the semfile grammar 
 /// [pest_grammar.pest](pest_grammar.pest)
 /// 
-fn eval(expr: &str, stack: &mut Vec<Pair<Rule>>, rule: Rule, tokens: &Vec<Token>) -> Result<bool, String> {
+fn eval(stack: &mut Vec<Pair<Rule>>, rule: Rule, tokens: &Vec<Token>) -> Result<bool, String> {
     trace!("eval.stack: {:?}", stack);
 
     let value = stack.pop().unwrap();           // simple value or comma separated value string....
@@ -83,9 +83,8 @@ fn eval(expr: &str, stack: &mut Vec<Pair<Rule>>, rule: Rule, tokens: &Vec<Token>
         index => {
             let n = index.parse::<usize>().unwrap();
 
-            if valid_tokens.len() < n {
-                return Err(format!("Invalid type index {}({}) in expression '{}' ({} tokens found, 0-index)", 
-                    type_term.as_str(), n, expr, valid_tokens.len()));
+            if valid_tokens.len()-1 < n {
+                return Ok(false);
             }          
 
             match rule {                
@@ -118,10 +117,10 @@ lazy_static! {
 /// * `stack` - An expression evaluation stack, LIFO
 /// * `tokens` - A list of tokens to evaluate    
 /// 
-fn process_grammar<'a>(expr: &str, pair: Pair<'a, Rule>, stack: &mut Vec<Pair<'a, Rule>>, tokens: &Vec<Token>) 
+fn process_grammar<'a>(pair: Pair<'a, Rule>, stack: &mut Vec<Pair<'a, Rule>>, tokens: &Vec<Token>) 
     -> Result<bool, String> {
    
-    let atom = |pair| process_grammar(expr, pair, stack, tokens);
+    let atom = |pair| process_grammar(pair, stack, tokens);
 
     let infix = |lhs: Result<bool, String>, op: Pair<Rule>, rhs: Result<bool, String>| 
         -> Result<bool, String> {
@@ -146,11 +145,11 @@ fn process_grammar<'a>(expr: &str, pair: Pair<'a, Rule>, stack: &mut Vec<Pair<'a
         Rule::expr => {  return CLIMBER.climb(pair.into_inner(), atom, infix);  },
         Rule::simple_expr => { 
             pair.into_inner().map(atom).count();
-            return eval(expr, stack, Rule::simple_expr, tokens);
+            return eval(stack, Rule::simple_expr, tokens);
         },
         Rule::contains_expr => { 
             pair.into_inner().map(atom).count();
-            return eval(expr, stack, Rule::simple_expr, tokens);
+            return eval(stack, Rule::simple_expr, tokens);
         },
 
         Rule::type_expr => { pair.into_inner().map(atom).count(); },
