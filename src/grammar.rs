@@ -208,6 +208,14 @@ mod tests {
     }
 
     #[test]
+    fn test_match() { 
+        let tokens: Vec<Token> = vec![create_token("1970-07-31")];
+
+        assert!(parse_expression("date(0) match \\d{4}-\\d{2}-\\d{2}", &tokens).unwrap() == true);
+    }
+
+
+    #[test]
     fn test_multiple_token_eval() {    
         init();
 
