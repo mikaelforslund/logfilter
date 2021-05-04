@@ -3,10 +3,13 @@ use std::io::{self, BufRead};
 use regex::Regex;
 use lazy_static::lazy_static;
 use chrono::{NaiveDate, Utc};
+use std::net::Ipv4Addr;
+use std::net::Ipv6Addr;
+//use semver::Version;
 
 /// Semfilter will be able to handle these types.
 /// 
-#[derive(Debug, PartialEq, PartialOrd)]
+#[derive(Debug, PartialEq,  PartialOrd)]
 pub enum Token {
     /// The implicit parameters indicate the following:
     ///   1. symbolic name (e.g. date, string, email etc) 
@@ -17,9 +20,11 @@ pub enum Token {
     IntegerToken(String, u64),
     EmailToken(String, String),
     DateToken(String, NaiveDate, String), 
-    Ipv4Token(String, String),
-    Ipv6Token(String, String)
+    Ipv4Token(String, Ipv4Addr),
+    Ipv6Token(String, Ipv6Addr),
+    //SemVersionToken(String, Version)
 }
+
 
 impl Token {
     /// Implements a copy factory method for a Token 
@@ -36,8 +41,8 @@ impl Token {
             Token::IntegerToken(t, _) => Token::IntegerToken(String::from(t), value.parse().unwrap()),
             Token::NumberToken(t, _) => Token::NumberToken(String::from(t), value.parse().unwrap()),
             Token::EmailToken(t, _) => Token::EmailToken(String::from(t), value.to_string()),
-            Token::Ipv4Token(t, _) => Token::Ipv4Token(String::from(t), value.to_string()),
-            Token::Ipv6Token(t, _) => Token::Ipv6Token(String::from(t), value.to_string())
+            Token::Ipv4Token(t, _) => Token::Ipv4Token(String::from(t), value.parse().unwrap()),
+            Token::Ipv6Token(t, _) => Token::Ipv6Token(String::from(t), value.parse().unwrap())
         }
     }
 
@@ -73,8 +78,8 @@ pub fn create_token(str: &str) -> Token {
     match str {
         str if DATE_REGEX.is_match(str) => Token::DateToken(String::from("date"), NaiveDate::parse_from_str(str, "%Y-%m-%d").unwrap(), "%Y-%m-%d".to_string()),
         str if EMAIL_REGEX.is_match(str) => Token::EmailToken(String::from("email"), String::from(str)),
-        str if IPV4_REGEX.is_match(str) => Token::Ipv4Token(String::from("ipv4"), String::from(str)),
-        str if IPV6_REGEX.is_match(str) => Token::Ipv6Token(String::from("ipv6"), String::from(str)),
+        str if IPV4_REGEX.is_match(str) => Token::Ipv4Token(String::from("ipv4"), str.parse().unwrap()),
+        str if IPV6_REGEX.is_match(str) => Token::Ipv6Token(String::from("ipv6"), str.parse().unwrap()),
         str if NUMBER_REGEX.is_match(str) => Token::NumberToken(String::from("number"), str.parse().unwrap()),
         str if INTEGER_REGEX.is_match(str) => Token::IntegerToken(String::from("integer"), str.parse().unwrap()),
         _ => Token::StringToken(String::from("string"), String::from(str))
@@ -103,11 +108,14 @@ pub fn full_lines(mut input: impl BufRead) -> impl Iterator<Item = io::Result<St
 }
 
 #[cfg(test)]
-#[cfg(test)]
-mod tests {
+mod tests {   
     use crate::{create_token, Token};
     use std::io::Write;
 
+    //use crate::{ Tok, EqToken, OrdEqToken };
+
+    //use  crate::{ Tok, EqToken, OrdEqToken };
+    
     fn init() {
         let _ = env_logger::builder()
             .format(|buf, record| writeln!(buf, "{}", record.args()))

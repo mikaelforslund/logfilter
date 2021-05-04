@@ -89,7 +89,7 @@ fn eval(stack: &mut Vec<Pair<Rule>>, rule: Rule, tokens: &Vec<Token>) -> Result<
             if valid_tokens.len()-1 < n {
                 return Ok(false);
             }          
-
+            
             match rule {                
                 // eval the token that matched  the type_term, e.g: 
                 //   true for: date(1) == 1900-01-01    for tokens:[1900-01-01, 1970-07-31]
@@ -172,6 +172,30 @@ fn process_grammar<'a>(pair: Pair<'a, Rule>, stack: &mut Vec<Pair<'a, Rule>>, to
 
 #[cfg(test)]
 mod tests {
+
+    // TODO incorporate this patterm to get a @Before behaviour to run before each test...
+    // #[test]
+    // fn test_something_interesting() {
+    //     run_test(|| {
+    //         let true_or_false = do_the_test();
+    
+    //         assert!(true_or_false);
+    //     })
+    // }
+    // fn run_test<T>(test: T) -> ()
+    //     where T: FnOnce() -> () + panic::UnwindSafe
+    // {
+    //     setup();
+    
+    //     let result = panic::catch_unwind(|| {
+    //         test()
+    //     });
+    
+    //     teardown();
+    
+    //     assert!(result.is_ok())
+    // }
+
     use crate::{create_token, parse_expression, Token};
     use std::io::Write;
 

@@ -4,30 +4,19 @@ about: Simple command line tool to filter unstructured text data. Allows tokens 
 args:
     - verbose:
         short: v
+        multiple: true
         help: Sets the level of verbosity
-    - data-types:
-        short: t
-        long: data-types
-        help: Specify datatypes to look for
+    - expr:
+        help: The expression to use to filter the input lines, in douple quotes, e.g. "date(0) == 1900-01-01"
         required: true
-        multiple: true
+    - token-sep:
+        short: t
+        long: token-sep
         takes_value: true
-    - data-formats:
-        short: df
-        long: data-formats
-        help: Specify the data formats to look for
-        required: false
+        help: Specifies string of chacater(s) that separates tokens in a line, e.g "," or "|" or " " 
+    - data-def:
+        short: d
+        long: data-def
         multiple: true
-        takes_value: true
-    - filter-expression:
-        short: f
-        long: filter
-        help: The filter expression to use
-        required: false
-        takes_value: true 
-    - sort-expression:
-        short: s
-        long : sort-expr
-        help: The sort expression to use
-        required: false
+        help: A comma separated list of data formats to look for, e.g. date{yyyy/mm/dd}
         takes_value: true
