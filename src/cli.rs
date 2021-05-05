@@ -44,3 +44,9 @@ pub fn parse_cli() -> CommandArgs {
         token_sep: token_sep 
     }
 } 
+
+#[cfg(test)]
+mod tests {   
+
+    //
+}

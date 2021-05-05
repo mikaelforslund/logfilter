@@ -5,7 +5,7 @@ use lazy_static::lazy_static;
 use chrono::{NaiveDate, Utc};
 use std::net::Ipv4Addr;
 use std::net::Ipv6Addr;
-//use semver::Version;
+use semver::Version;
 
 /// Semfilter will be able to handle these types.
 /// 
@@ -22,7 +22,7 @@ pub enum Token {
     DateToken(String, NaiveDate, String), 
     Ipv4Token(String, Ipv4Addr),
     Ipv6Token(String, Ipv6Addr),
-    //SemVersionToken(String, Version)
+    SemVersionToken(String, Version)
 }
 
 
@@ -42,7 +42,8 @@ impl Token {
             Token::NumberToken(t, _) => Token::NumberToken(String::from(t), value.parse().unwrap()),
             Token::EmailToken(t, _) => Token::EmailToken(String::from(t), value.to_string()),
             Token::Ipv4Token(t, _) => Token::Ipv4Token(String::from(t), value.parse().unwrap()),
-            Token::Ipv6Token(t, _) => Token::Ipv6Token(String::from(t), value.parse().unwrap())
+            Token::Ipv6Token(t, _) => Token::Ipv6Token(String::from(t), value.parse().unwrap()),
+            Token::SemVersionToken(t, _) => Token::SemVersionToken(String::from(t), value.parse().unwrap())
         }
     }
 
@@ -55,6 +56,7 @@ impl Token {
             Token::Ipv4Token(t, s) => (t.to_string(), s.to_string()),
             Token::Ipv6Token(t, s) => (t.to_string(), s.to_string()),
             Token::StringToken(t, s) => (t.to_string(), s.to_string()),
+            Token::SemVersionToken(t, s) => (t.to_string(), s.to_string())
         }
     }
 
@@ -80,6 +82,7 @@ pub fn create_token(str: &str) -> Token {
         str if EMAIL_REGEX.is_match(str) => Token::EmailToken(String::from("email"), String::from(str)),
         str if IPV4_REGEX.is_match(str) => Token::Ipv4Token(String::from("ipv4"), str.parse().unwrap()),
         str if IPV6_REGEX.is_match(str) => Token::Ipv6Token(String::from("ipv6"), str.parse().unwrap()),
+        str if SEMVER_REGEX.is_match(str) => Token::SemVersionToken(String::from("semver"), Version::parse(str).unwrap()),
         str if NUMBER_REGEX.is_match(str) => Token::NumberToken(String::from("number"), str.parse().unwrap()),
         str if INTEGER_REGEX.is_match(str) => Token::IntegerToken(String::from("integer"), str.parse().unwrap()),
         _ => Token::StringToken(String::from("string"), String::from(str))
@@ -92,8 +95,9 @@ lazy_static! {
     static ref EMAIL_REGEX: Regex = Regex::new(r"^\S+@\S+\.\S+$").unwrap();
     static ref IPV4_REGEX: Regex = Regex::new(r"^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$").unwrap();
     static ref IPV6_REGEX: Regex = Regex::new(r"^(([0-9a-fA-F]{0,4}:){1,7}[0-9a-fA-F]{0,4})$").unwrap();
-    static ref NUMBER_REGEX: Regex = Regex::new(r"^\d+(\.\d{1,2})+$").unwrap();
+    static ref NUMBER_REGEX: Regex = Regex::new(r"^\d+\.(\d{1,2})+$").unwrap();
     static ref INTEGER_REGEX: Regex =  Regex::new(r"^\d+$").unwrap();
+    static ref SEMVER_REGEX: Regex =  Regex::new(r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(\-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$").unwrap();
 }
  
 pub fn full_lines(mut input: impl BufRead) -> impl Iterator<Item = io::Result<String>> {
@@ -109,7 +113,7 @@ pub fn full_lines(mut input: impl BufRead) -> impl Iterator<Item = io::Result<St
 
 #[cfg(test)]
 mod tests {   
-    use crate::{create_token, Token};
+    use crate::tokenizer::{create_token, Token};
     use std::io::Write;
 
     //use crate::{ Tok, EqToken, OrdEqToken };
@@ -133,6 +137,7 @@ mod tests {
         assert!(matches!(create_token("127.0.0.1"), Token::Ipv4Token(_, _)));
         assert!(matches!(create_token("1762:0:0:0:0:B03:1:AF18"), Token::Ipv6Token(_, _)));
         assert!(matches!(create_token("1970-07-31"), Token::DateToken(_, _, _)));
+        assert!(matches!(create_token("1.0.0"), Token::SemVersionToken(_, _)));
     }
 
     #[test]
@@ -146,6 +151,7 @@ mod tests {
         assert!(create_token("127.0.0.1").is_type("ipv4"));
         assert!(create_token("1762:0:0:0:0:B03:1:AF18").is_type("ipv6"));
         assert!(create_token("1970-07-31").is_type("date"));
+        assert!(create_token("1.0.0").is_type("semver"));
 
         assert!( !create_token("test").is_type("s"));
         assert!( !create_token("3.14").is_type("n"));
@@ -154,5 +160,6 @@ mod tests {
         assert!( !create_token("127.0.0.1").is_type("i"));
         assert!( !create_token("1762:0:0:0:0:B03:1:AF18").is_type("i"));
         assert!( !create_token("1970-07-31").is_type("d"));
+        assert!( !create_token("1.0.0").is_type("s"));
     }
 }

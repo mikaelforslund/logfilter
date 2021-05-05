@@ -115,7 +115,6 @@ lazy_static! {
 
 /// Internal function that processes a pest grammar pair and evaluates to Result. 
 /// 
-/// * `expr` - The original expression from which the tokens are genered
 /// * `pair` - One grammar pair
 /// * `stack` - An expression evaluation stack, LIFO
 /// * `tokens` - A list of tokens to evaluate    
@@ -196,7 +195,8 @@ mod tests {
     //     assert!(result.is_ok())
     // }
 
-    use crate::{create_token, parse_expression, Token};
+    use crate::grammar::parse_expression; 
+    use crate::tokenizer::{create_token, Token};
     use std::io::Write;
 
     fn init() {
