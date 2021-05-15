@@ -12,19 +12,26 @@ use log::{trace};
 /// 
 pub fn process_input(command_args: CommandArgs) -> Result<(), io::Error> {
     match command_args {
-        CommandArgs { expr, data_def, token_sep } => {
+        CommandArgs { expr, data_def, token_regex } => {
     
-            println!("expr: {:?}  data_def: {:?},  token_sep: {:?}", expr, data_def, token_sep);
+            println!("expr: {:?}  data_def: {:?},  token_sep: {:?}", expr, data_def, token_regex);
     
             // read lines from stdin, tokenizes the words using regexps and finally writes same line to stdout if it 
             // matches the expression passed in to the program 
             for line in full_lines(io::stdin().lock()) {
                 let line = line?;
     
+                let matches_regex = |char: char| { 
+                    match &token_regex {
+                        Some(regex) => { println!("char: {:?}", char);  return regex.is_match(char.to_string().as_str()); },
+                        None => char == ' '
+                    }
+                };
+
                 // TODO take the token separator characte set and split on that..
-                let tokens:Vec<Token> = line.split_whitespace()
+                let tokens:Vec<Token> = line.split(matches_regex)
                     .into_iter()
-                    .map(|word| create_token(&word))
+                    .map(|word| create_token(&word.trim()))
                     .collect();
     
                 trace!("main.tokens: {:?}", tokens);

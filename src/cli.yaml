@@ -13,7 +13,7 @@ args:
         short: t
         long: token-sep
         takes_value: true
-        help: Specifies string of chacater(s) that separates tokens in a line, e.g "," or "|" or " " 
+        help: Specifies a regex that separates tokens in a line, e.g ",|\s|\t"  default is WHITESPACE 
     - data-def:
         short: d
         long: data-def

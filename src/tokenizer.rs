@@ -97,7 +97,7 @@ lazy_static! {
     static ref IPV6_REGEX: Regex = Regex::new(r"^(([0-9a-fA-F]{0,4}:){1,7}[0-9a-fA-F]{0,4})$").unwrap();
     static ref NUMBER_REGEX: Regex = Regex::new(r"^\d+\.(\d{1,2})+$").unwrap();
     static ref INTEGER_REGEX: Regex =  Regex::new(r"^\d+$").unwrap();
-    static ref SEMVER_REGEX: Regex =  Regex::new(r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(\-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$").unwrap();
+    static ref SEMVER_REGEX: Regex =  Regex::new(r"^(0|\d*)\.(0|\d*)\.(0|\d*)(\-\w+(\.\w+)*)?(\+\w+(\.\w+)*)?$").unwrap();
 }
  
 pub fn full_lines(mut input: impl BufRead) -> impl Iterator<Item = io::Result<String>> {
