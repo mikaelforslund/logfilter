@@ -27,17 +27,17 @@ Simple command line tool to filter unstructured text data. Allows tokens to be c
 
 **Currently supported datatypes:**
 
-| Data type | Operator              | Default format          | Example                 |
-|-----------| ----------------------|-------------------------|-------------------------|
-| date      | ==, !=, <=, >=, <, >  | yyyy-MM-dd              | 1970-01-01              |
-| time      | ==, !=, <=, >=, <, >  | HH:mm                   | 14:30                   |
-| number    | ==, !=, <=, >=, <, >  | decimal number          | 3.1415                  |
-| integer   | ==, !=, <=, >=, <, >  | non floating number     | 42                      |
-| string    | ==, !=, in, match     | any character           | hello world             |
-| email     | ==, !=, in            | xxx@yyy.com             | test@gmail.com          |
-| ivp4      | ==, !=, in            | 127.0.0.1               | 127.0.0.1               |
-| ivp6      | ==, !=, in            | 1762:0:0:0:0:B03:1:AF18 | 1762:0:0:0:0:B03:1:AF18 |
-| semver    | ==, !=, in            | 1.0.0                   | 1.0.0                   |
+| Data type | Operator                             | Default format          | Example                 |
+|-----------| -------------------------------------|-------------------------|-------------------------|
+| date      | ==, !=, <=, >=, <, >, in, !in        | yyyy-MM-dd              | 1970-01-01              |
+| time      | ==, !=, <=, >=, <, >, in, !in        | HH:mm                   | 14:30                   |
+| number    | ==, !=, <=, >=, <, >, in, !in        | decimal number          | 3.1415                  |
+| integer   | ==, !=, <=, >=, <, >, in, !in        | non floating number     | 42                      |
+| string    | ==, !=, <=, >=, <, >, in, !in, match | any character           | hello world             |
+| email     | ==, !=, <=, >=, <, >, in, !in        | xxx@yyy.com             | test@gmail.com          |
+| ivp4      | ==, !=, <=, >=, <, >, in, !in        | 127.0.0.1               | 127.0.0.1               |
+| ivp6      | ==, !=, <=, >=, <, >, in, !in        | 1762:0:0:0:0:B03:1:AF18 | 1762:0:0:0:0:B03:1:AF18 |
+| semver    | ==, !=, <=, >=, <, >, in, !in        | 1.0.0                   | 1.0.0                   |
 
 
 <br>

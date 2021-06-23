@@ -37,7 +37,10 @@ impl Token {
                 }
             },
             Token::StringToken(t, _) =>  Token::StringToken(String::from(t), value.to_string()),
-            Token::IntegerToken(t, _) => Token::IntegerToken(String::from(t), value.parse().unwrap()),
+            Token::IntegerToken(t, _) => { 
+                println!("value: {:?}", value);
+                Token::IntegerToken(String::from(t), value.parse().unwrap())
+            },
             Token::NumberToken(t, _) => Token::NumberToken(String::from(t), value.parse().unwrap()),
             Token::EmailToken(t, _) => Token::EmailToken(String::from(t), value.to_string()),
             Token::Ipv4Token(t, _) => Token::Ipv4Token(String::from(t), value.parse().unwrap()),
@@ -59,12 +62,6 @@ impl Token {
         }
     }
 
-    /// Checks if a token is of a particular type 
-    pub fn is_type(&self, str: &str) -> bool {        
-        let (t, _) = self.get_value_tuple();
-        t == str
-    }
-
     pub fn is_match(&self, regex_val: &str) -> bool {
         //let v = self.to_string();
         let (_, v) = self.get_value_tuple();
@@ -75,20 +72,36 @@ impl Token {
 
 // TODO do we really need to record the format in the Token?
 // TODO make the format an additional argument to this function...
-pub fn create_token(str: &str) -> Token {
-    match str {
-        str if DATE_REGEX.is_match(str) => Token::DateToken(String::from("date"), NaiveDate::parse_from_str(str, "%Y-%m-%d").unwrap(), "%Y-%m-%d".to_string()),
-        str if EMAIL_REGEX.is_match(str) => Token::EmailToken(String::from("email"), String::from(str)),
-        str if IPV4_REGEX.is_match(str) => Token::Ipv4Token(String::from("ipv4"), str.parse().unwrap()),
-        str if IPV6_REGEX.is_match(str) => Token::Ipv6Token(String::from("ipv6"), str.parse().unwrap()),
-        str if SEMVER_REGEX.is_match(str) => Token::SemVersionToken(String::from("semver"), Version::parse(str).unwrap()),
-        str if NUMBER_REGEX.is_match(str) => Token::NumberToken(String::from("number"), str.parse().unwrap()),
-        str if INTEGER_REGEX.is_match(str) => Token::IntegerToken(String::from("integer"), str.parse().unwrap()),
-        _ => Token::StringToken(String::from("string"), String::from(str))
+pub fn create_token(type_term: &str, value: &str) -> Result<Token, String> {
+    match type_term {
+        type_term if type_term == "date" && DATE_REGEX.is_match(value) => 
+            Ok(Token::DateToken(String::from("date"), NaiveDate::parse_from_str(value, "%Y-%m-%d").unwrap(), "%Y-%m-%d".to_string())),
+
+        type_term if type_term == "email" && EMAIL_REGEX.is_match(value) => 
+            Ok(Token::EmailToken(String::from("email"), String::from(value))),
+
+        type_term if type_term == "ivp4" && IPV4_REGEX.is_match(value) => 
+            Ok(Token::Ipv4Token(String::from("ipv4"), value.parse().unwrap())),
+
+        type_term if type_term == "ivp6" && IPV6_REGEX.is_match(value) => 
+            Ok(Token::Ipv6Token(String::from("ipv6"), value.parse().unwrap())),
+
+        type_term if type_term == "semver" && SEMVER_REGEX.is_match(value) => 
+            Ok(Token::SemVersionToken(String::from("semver"), Version::parse(value).unwrap())),
+
+        type_term if type_term == "number" && NUMBER_REGEX.is_match(value) => 
+            Ok(Token::NumberToken(String::from("number"), value.parse().unwrap())),
+
+        type_term if type_term ==  "integer" && INTEGER_REGEX.is_match(value) => 
+            Ok(Token::IntegerToken(String::from("integer"), value.parse().unwrap())),
+
+        type_term if type_term == "string" => Ok(Token::StringToken(String::from("string"), String::from(value))),
+        
+        _ => Err(String::from(format!("Type {} not supported", type_term)))
     }
 }
 
-// TODO add more types here... add them here once
+// define type validations...
 lazy_static! {
     static ref DATE_REGEX: Regex = Regex::new(r"^\d{4}-\d{2}-\d{2}$").unwrap();
     static ref EMAIL_REGEX: Regex = Regex::new(r"^\S+@\S+\.\S+$").unwrap();
@@ -129,36 +142,36 @@ mod tests {
     fn test_parse_token() {       
         init();
 
-        assert!(matches!(create_token("test"), Token::StringToken(_, _)));
-        assert!(matches!(create_token("3.14"), Token::NumberToken(_, _)));
-        assert!(matches!(create_token("10"), Token::IntegerToken(_, _)));
-        assert!(matches!(create_token("test@gmail.com"), Token::EmailToken(_, _)));
-        assert!(matches!(create_token("127.0.0.1"), Token::Ipv4Token(_, _)));
-        assert!(matches!(create_token("1762:0:0:0:0:B03:1:AF18"), Token::Ipv6Token(_, _)));
-        assert!(matches!(create_token("1970-07-31"), Token::DateToken(_, _, _)));
-        assert!(matches!(create_token("1.0.0"), Token::SemVersionToken(_, _)));
+        assert!(matches!(create_token("string", "test"), Token::StringToken(_, _)));
+        assert!(matches!(create_token("number", "3.14"), Token::NumberToken(_, _)));
+        assert!(matches!(create_token("integer", "10"), Token::IntegerToken(_, _)));
+        assert!(matches!(create_token("email", "test@gmail.com"), Token::EmailToken(_, _)));
+        assert!(matches!(create_token("ivp4", "127.0.0.1"), Token::Ipv4Token(_, _)));
+        assert!(matches!(create_token("ivp6","1762:0:0:0:0:B03:1:AF18"), Token::Ipv6Token(_, _)));
+        assert!(matches!(create_token("date", "1970-07-31"), Token::DateToken(_, _, _)));
+        assert!(matches!(create_token("semver","1.0.0"), Token::SemVersionToken(_, _)));
     }
 
     #[test]
     fn test_token_is_match() {       
         init();
 
-        assert!(create_token("test").is_type("string"));
-        assert!(create_token("3.14").is_type("number"));
-        assert!(create_token("10").is_type("integer"));
-        assert!(create_token("test@gmail.com").is_type("email"));
-        assert!(create_token("127.0.0.1").is_type("ipv4"));
-        assert!(create_token("1762:0:0:0:0:B03:1:AF18").is_type("ipv6"));
-        assert!(create_token("1970-07-31").is_type("date"));
-        assert!(create_token("1.0.0").is_type("semver"));
+        assert!(create_token("", "test").is_type("string"));
+        assert!(create_token("", "3.14").is_type("number"));
+        assert!(create_token("", "10").is_type("integer"));
+        assert!(create_token("", "test@gmail.com").is_type("email"));
+        assert!(create_token("", "127.0.0.1").is_type("ipv4"));
+        assert!(create_token("", "1762:0:0:0:0:B03:1:AF18").is_type("ipv6"));
+        assert!(create_token("","1970-07-31").is_type("date"));
+        assert!(create_token("", "1.0.0").is_type("semver"));
 
-        assert!( !create_token("test").is_type("s"));
-        assert!( !create_token("3.14").is_type("n"));
-        assert!( !create_token("10").is_type("i"));
-        assert!( !create_token("test@gmail.com").is_type("e"));
-        assert!( !create_token("127.0.0.1").is_type("i"));
-        assert!( !create_token("1762:0:0:0:0:B03:1:AF18").is_type("i"));
-        assert!( !create_token("1970-07-31").is_type("d"));
-        assert!( !create_token("1.0.0").is_type("s"));
+        assert!( !create_token("", "test").is_type("s"));
+        assert!( !create_token("", "3.14").is_type("n"));
+        assert!( !create_token("", "10").is_type("i"));
+        assert!( !create_token("", "test@gmail.com").is_type("e"));
+        assert!( !create_token("","127.0.0.1").is_type("i"));
+        assert!( !create_token("", "1762:0:0:0:0:B03:1:AF18").is_type("i"));
+        assert!( !create_token("", "1970-07-31").is_type("d"));
+        assert!( !create_token("","1.0.0").is_type("s"));
     }
 }

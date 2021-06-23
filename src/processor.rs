@@ -1,5 +1,5 @@
 
-use crate::tokenizer::{ create_token, full_lines, Token };
+use crate::tokenizer::{ full_lines};
 use crate::grammar::{ parse_expression };
 use std::io::{ self, Write };
 use crate::cli::CommandArgs;
@@ -29,11 +29,11 @@ pub fn process_input(command_args: CommandArgs) -> Result<(), io::Error> {
                 };
 
                 // TODO take the token separator characte set and split on that..
-                let tokens:Vec<Token> = line.split(matches_regex)
-                    .into_iter()
-                    .map(|word| create_token(&word.trim()))
-                    .collect();
-    
+                 let tokens = line.split(matches_regex)
+                     .into_iter()
+                     .map(|word| word.trim())
+                     .collect::<Vec<&str>>();
+
                 trace!("main.tokens: {:?}", tokens);
     
                 match parse_expression(expr.as_str(), &tokens) {            
@@ -42,7 +42,7 @@ pub fn process_input(command_args: CommandArgs) -> Result<(), io::Error> {
                         let mut handle = stdout.lock();
                         handle.write_all(line.as_bytes())?;
                     },
-                    Err(e) => println!("{:?}", e),
+                    Err(e) => println!("Error in expression: {}", e),
                     _ => {}
                 }
             }
