@@ -68,7 +68,7 @@ impl Token {
     pub fn is_match(&self, regex_val: &str) -> bool {
         //let v = self.to_string();
         let (_, v) = self.get_value_tuple();
-        //println!("v: {:?}", v);
+        println!("v: {:?}", v);
         return Regex::new(regex_val).unwrap().is_match(v.as_str());
     }
 }
