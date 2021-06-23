@@ -2,7 +2,7 @@
 
 use pest::prec_climber::{Assoc, Operator, PrecClimber};
 use pest::Parser;
-use pest::iterators::Pair;
+use pest::iterators::{Pair, Pairs};
 use lazy_static::lazy_static;
 use crate::tokenizer::{Token, create_token};
 use log::{trace};
@@ -10,6 +10,16 @@ use log::{trace};
 #[derive(Parser)]
 #[grammar = "pest_grammar.pest"]
 struct SemFilterParser;
+
+
+lazy_static! {
+    /// Initializes the PrecClimber which is required for the operator precedence configuration.  
+    static ref CLIMBER: PrecClimber<Rule> = {
+        PrecClimber::new(vec![
+            Operator::new(Rule::and_op, Assoc::Left) | Operator::new(Rule::or_op, Assoc::Left),
+        ])    
+    };
+}
 
 /// Public entry function to parse an expression using a list of tokens from the input.  
 /// 
@@ -19,20 +29,18 @@ struct SemFilterParser;
 /// 
 /// parse_expression("date(1) in [1970-07-31, now()]", &tokens)
 /// ```
-pub fn parse_expression(expr: &str, tokens: &Vec<&str>) -> Result<bool, String> {
+pub fn parse_expression<'a>(expr: &'a str) -> Result<Pairs<'a, Rule>, String> {
     match SemFilterParser::parse(Rule::grammar, &expr) {
-        Ok(mut grammar) => process_grammar(grammar.next().unwrap(), &mut Vec::new(), tokens), 
-        Err(e) => Err(e.to_string()),
+      Ok(grammar) => Ok(grammar),
+      Err(e) => Err(e.to_string()),      
     }
 }
 
-lazy_static! {
-    /// Initializes the PrecClimber which is required for the operator precedence configuration.  
-    static ref CLIMBER: PrecClimber<Rule> = {
-        PrecClimber::new(vec![
-            Operator::new(Rule::and_op, Assoc::Left) | Operator::new(Rule::or_op, Assoc::Left),
-        ])    
-    };
+pub fn evaluate_line(grammar: &mut Pairs<Rule>, tokens: &Vec<&str>) -> Result<bool, String> {
+    match process_grammar(grammar.next().unwrap(), &mut Vec::new(), tokens) {
+        Ok(val) => Ok(val),
+        Err(e) => Err(e.to_string())
+    } 
 }
 
 /// Evaluates two tokens based on its infix operator and returns Result. Supported operators 

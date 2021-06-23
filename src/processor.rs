@@ -1,6 +1,6 @@
 
 use crate::tokenizer::{ full_lines};
-use crate::grammar::{ parse_expression };
+use crate::grammar::{ parse_expression, evaluate_line };
 use std::io::{ self, Write };
 use crate::cli::CommandArgs;
 use log::{trace};
@@ -16,35 +16,41 @@ pub fn process_input(command_args: CommandArgs) -> Result<(), io::Error> {
     
             println!("expr: {:?}  data_def: {:?},  token_sep: {:?}", expr, data_def, token_regex);
     
-            // read lines from stdin, tokenizes the words using regexps and finally writes same line to stdout if it 
-            // matches the expression passed in to the program 
-            for line in full_lines(io::stdin().lock()) {
-                let line = line?;
-    
-                let matches_regex = |char: char| { 
-                    match &token_regex {
-                        Some(regex) => { println!("char: {:?}", char);  return regex.is_match(char.to_string().as_str()); },
-                        None => char == ' '
+            match parse_expression(expr.as_str()) {
+                Ok(mut grammar) => {
+
+                    // read lines from stdin, tokenizes the words using regexps and finally writes same line to stdout if it 
+                    // matches the expression passed in to the program 
+                    for line in full_lines(io::stdin().lock()) {
+                        let line = line?;                        
+
+                        let matches_regex = |char: char| { 
+                            match &token_regex {
+                                Some(regex) => { println!("char: {:?}", char);  return regex.is_match(char.to_string().as_str()); },
+                                None => char == ' '
+                            }
+                        };
+
+                        // TODO take the token separator characte set and split on that..
+                        let tokens = line.split(matches_regex)
+                            .into_iter()
+                            .map(|word| word.trim())
+                            .collect::<Vec<&str>>();
+
+                        trace!("main.tokens: {:?}", tokens);
+            
+                        match evaluate_line(&mut grammar, &tokens) {            
+                            Ok(true) => {
+                                let stdout = io::stdout();
+                                let mut handle = stdout.lock();
+                                handle.write_all(line.as_bytes())?;
+                            },
+                            Err(e) => println!("Error in expression: {}", e),
+                            _ => {}
+                        }
                     }
-                };
-
-                // TODO take the token separator characte set and split on that..
-                 let tokens = line.split(matches_regex)
-                     .into_iter()
-                     .map(|word| word.trim())
-                     .collect::<Vec<&str>>();
-
-                trace!("main.tokens: {:?}", tokens);
-    
-                match parse_expression(expr.as_str(), &tokens) {            
-                    Ok(true) => {
-                        let stdout = io::stdout();
-                        let mut handle = stdout.lock();
-                        handle.write_all(line.as_bytes())?;
-                    },
-                    Err(e) => println!("Error in expression: {}", e),
-                    _ => {}
-                }
+                },
+                Err(e) => /*io::Error::new(ErrorKind::Other, "oh no!") // */ println!("Error parsing epression: {}", e.to_string())
             }
         }
     }
