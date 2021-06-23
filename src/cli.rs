@@ -43,7 +43,7 @@ fn get_data_def(matches: &ArgMatches) -> Vec<DataDef> {
 fn get_token_sep(matches: &ArgMatches) -> Option<Regex>{
     if let Some(token_separators) = matches.value_of("token-sep") {
         // e.g. "," or "<>" or " "
-        Some(Regex::new(token_separators).unwrap()) //token_separators.map(|str| String::from(str)).collect::<Vec<String>>()
+        Some(Regex::new(token_separators).unwrap())
     } else { 
         None 
     }
@@ -53,7 +53,7 @@ fn get_token_sep(matches: &ArgMatches) -> Option<Regex>{
 mod tests {   
     mod tests {
         use clap::{App};
-        use crate::cli::{get_data_def, get_token_sep, DataDef};
+        use crate::cli::*;
 
         #[test]
         fn test_simple_args() {                     
@@ -67,10 +67,14 @@ mod tests {
             let token_sep = get_token_sep(&matches);
 
             assert!(matches!(data_defs, _target_vec));
-            assert!(token_sep.is_some());
+            assert!(token_sep.is_some());            
 
             //println!("data_defs: {:?}", data_defs);
             //println!("token_sep: {:?}", token_sep);
         }
+    }
+
+    #[test]
+    fn misc_test() {
     }
 }

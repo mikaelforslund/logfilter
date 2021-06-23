@@ -25,7 +25,6 @@ pub enum Token {
     SemVersionToken(String, Version)
 }
 
-
 impl Token {
     /// Implements a copy factory method for a Token 
     pub fn new(&self, value: &str) -> Token {

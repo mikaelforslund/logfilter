@@ -18,5 +18,5 @@ args:
         short: d
         long: data-def
         multiple: true
-        help: A comma separated list of data formats to look for, e.g. date{yyyy/mm/dd}
+        help: A comma separated list of tokenDefs to look for in the format <typeName>|<formatString>+ , e.g. date|yyyy/mm/dd
         takes_value: true

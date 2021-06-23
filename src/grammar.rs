@@ -20,7 +20,6 @@ struct SemFilterParser;
 /// parse_expression("date(1) in [1970-07-31, now()]", &tokens)
 /// ```
 pub fn parse_expression(expr: &str, tokens: &Vec<Token>) -> Result<bool, String> {
-    
     match SemFilterParser::parse(Rule::grammar, &expr) {
         Ok(mut grammar) => process_grammar(grammar.next().unwrap(), &mut Vec::new(), tokens),
         Err(e) => Err(e.to_string()),
