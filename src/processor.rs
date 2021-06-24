@@ -17,40 +17,32 @@ pub fn process_input(command_args: CommandArgs) -> Result<(), io::Error> {
             println!("expr: {:?}  data_def: {:?},  token_sep: {:?}", expr, data_def, token_regex);
     
             match parse_expression(expr.as_str()) {
-                Ok(mut grammar) => {
-
+                Ok(grammar) => {
+                    
                     // read lines from stdin, tokenizes the words using regexps and finally writes same line to stdout if it 
                     // matches the expression passed in to the program 
                     for line in full_lines(io::stdin().lock()) {
-                        let line = line?;                        
+                        let line = line?;                       
 
-                        let matches_regex = |char: char| { 
-                            match &token_regex {
-                                Some(regex) => { println!("char: {:?}", char);  return regex.is_match(char.to_string().as_str()); },
-                                None => char == ' '
-                            }
-                        };
-
-                        // TODO take the token separator characte set and split on that..
-                        let tokens = line.split(matches_regex)
+                        let tokens = token_regex.split(line.as_str())
                             .into_iter()
                             .map(|word| word.trim())
                             .collect::<Vec<&str>>();
 
                         trace!("main.tokens: {:?}", tokens);
             
-                        match evaluate_line(&mut grammar, &tokens) {            
+                        match evaluate_line(&mut grammar.clone(), &tokens) {            
                             Ok(true) => {
                                 let stdout = io::stdout();
                                 let mut handle = stdout.lock();
                                 handle.write_all(line.as_bytes())?;
                             },
                             Err(e) => println!("Error in expression: {}", e),
-                            _ => {}
+                            Ok(_) => { /* silently ignore this here as its a false positive..*/ }
                         }
                     }
                 },
-                Err(e) => /*io::Error::new(ErrorKind::Other, "oh no!") // */ println!("Error parsing epression: {}", e.to_string())
+                Err(e) => println!("Error parsing epression: {}", e)
             }
         }
     }

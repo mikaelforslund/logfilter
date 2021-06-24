@@ -18,7 +18,6 @@ Simple command line tool to filter unstructured text data. Allows tokens to be c
 
     OPTIONS:
         -t, --token-sep <regex>   Specifies how tokens are separated in a row, e.g ",|\s|\t",  default is WHITESPACE        
-        -b, --line-break <token>  Specifies a linebreak separator, default is LINEBREAK
         -s, --quote-string        Surround a string with single quotes, default a string is a single token
 
     ARGS:

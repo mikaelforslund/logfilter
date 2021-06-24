@@ -9,11 +9,11 @@ pub struct DataDef {
     format: String
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct CommandArgs {
     pub expr: String, 
     pub data_def: Vec<DataDef>,  
-    pub token_regex: Option<Regex>
+    pub token_regex: Regex
 }
 
 pub fn parse_cli() -> CommandArgs { 
@@ -40,12 +40,12 @@ fn get_data_def(matches: &ArgMatches) -> Vec<DataDef> {
     }
 }
 
-fn get_token_sep(matches: &ArgMatches) -> Option<Regex>{
+fn get_token_sep(matches: &ArgMatches) -> Regex {
     if let Some(token_separators) = matches.value_of("token-sep") {
         // e.g. "," or "<>" or " "
-        Some(Regex::new(token_separators).unwrap())
+        Regex::new(token_separators).unwrap()
     } else { 
-        None 
+        Regex::new(" ").unwrap()
     }
 }
 
@@ -57,7 +57,7 @@ mod tests {
 
         #[test]
         fn test_simple_args() {                     
-            let arg_vec = vec!["semfilter", "date(0) == 1900-01-01", "--token-sep=\",|\"", "--data-def=date|yyyy/MM/dd"];
+            let arg_vec = vec!["semfilter", "date(0) == 1900-01-01", "--token-sep=,", "--data-def=date|yyyy/MM/dd"];
             let _target_vec= vec![DataDef{type_name:String::from("date"), format:String::from("yyyy/MM/dd")}];
 
             let yaml = load_yaml!("cli.yaml");
@@ -67,7 +67,7 @@ mod tests {
             let token_sep = get_token_sep(&matches);
 
             assert!(matches!(data_defs, _target_vec));
-            assert!(token_sep.is_some());            
+            assert!(token_sep.as_str() == ",");            
 
             //println!("data_defs: {:?}", data_defs);
             //println!("token_sep: {:?}", token_sep);

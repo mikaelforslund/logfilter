@@ -29,18 +29,12 @@ lazy_static! {
 /// 
 /// parse_expression("date(1) in [1970-07-31, now()]", &tokens)
 /// ```
-pub fn parse_expression<'a>(expr: &'a str) -> Result<Pairs<'a, Rule>, String> {
-    match SemFilterParser::parse(Rule::grammar, &expr) {
-      Ok(grammar) => Ok(grammar),
-      Err(e) => Err(e.to_string()),      
-    }
+pub fn parse_expression<'a>(expr: &'a str) -> Result<Pairs<'a, Rule>, pest::error::Error<Rule>> {
+    Ok(SemFilterParser::parse(Rule::grammar, &expr)?)
 }
 
 pub fn evaluate_line(grammar: &mut Pairs<Rule>, tokens: &Vec<&str>) -> Result<bool, String> {
-    match process_grammar(grammar.next().unwrap(), &mut Vec::new(), tokens) {
-        Ok(val) => Ok(val),
-        Err(e) => Err(e.to_string())
-    } 
+    process_grammar(grammar.next().unwrap(), &mut Vec::new(), tokens)
 }
 
 /// Evaluates two tokens based on its infix operator and returns Result. Supported operators 
@@ -60,9 +54,8 @@ fn eval_op(type_term: &str, op: Rule, value: Pair<Rule>, token_val: &str) -> Res
                 Rule::gte => Ok(token >= token.new(value.as_str())),
                         
                 Rule::match_op => {
-                    //println!("the token: {:?}", token);
                     match &token {
-                        Token::StringToken(_, _) => Ok(token.is_match(value.as_str())),
+                        Token::StringToken(_) => Ok(token.is_match(value.as_str())),
                         _ => Err(format!("Invalid token type {}:{}, only string type is allowed for match expressions", 
                                 type_term, token_val))
                     } 
@@ -99,12 +92,13 @@ fn eval(stack: &mut Vec<Pair<Rule>>, rule: Rule, tokens: &Vec<&str>) -> Result<b
             //   false for: date(*) == 1900-01-01   for tokens:[1970-07-31, 1900-01-01]
             return Ok(tokens
                     .into_iter()
-                    .all(|t| eval_op(type_term.as_str(), op.as_rule(), value.clone(), t).unwrap()));
+                    .any(|t| eval_op(type_term.as_str(), op.as_rule(), value.clone(), t)
+                    .unwrap()));
         },
         index => {
             let n = index.parse::<usize>().unwrap();
 
-            if tokens.len()-1 < n {
+            if tokens.is_empty() || tokens.len()-1 < n {
                 return Ok(false);
             }          
             
@@ -202,8 +196,7 @@ mod tests {
     //     assert!(result.is_ok())
     // }
 
-    use crate::grammar::parse_expression; 
-    use crate::tokenizer::{create_token, Token};
+    use crate::grammar::{parse_expression, evaluate_line}; 
     use std::io::Write;
 
     fn init() {
@@ -214,49 +207,48 @@ mod tests {
 
     #[test]
     fn test_empty_tokens() {
-        assert!(parse_expression("date(0) == 1970-07-31", &vec!()).is_ok());
+        assert!(evaluate_line(&mut parse_expression("date(0) == 1970-07-31").unwrap(), &vec!()).is_ok());
     }
 
     #[test]
     fn test_empty_expressions() {    
-        assert!(parse_expression("", &vec!()).is_err());
+        assert!(parse_expression("").is_err());
     }
 
     #[test]
     fn test_error_reporting() {    
         init();
 
-        let tokens: Vec<Token> = vec![create_token("1970-07-31"), 
-            create_token("1900-01-01"), 
-            create_token("42"),
-            create_token("test")];
+        let tokens: Vec<&str> = vec!["1970-07-31", "1900-01-01", "42", "test"];
 
-        assert!(parse_expression("date(0) == 1970-07-31", &tokens).is_ok());
-        assert!(parse_expression("date(1) == 1900-01-01", &tokens).is_ok());
+        assert!(evaluate_line(&mut parse_expression("date(0) == 1970-07-31").unwrap(), &tokens).is_ok());
+        assert!(evaluate_line(&mut parse_expression("date(1) == 1900-01-01").unwrap(), &tokens).is_ok());
 
         // should fail
-        assert!(parse_expression("date(9) == 1900-01-01", &tokens).unwrap() == false);
+        assert!(evaluate_line(&mut parse_expression("date(9) == 1900-01-01").unwrap(), &tokens).unwrap() == false);
     }
 
     #[test]
     fn test_match() { 
-        let tokens: Vec<Token> = vec![create_token("1970-07-31")];
-
-        assert!(parse_expression("date(0) match \\d{4}-\\d{2}-\\d{2}", &tokens).unwrap() == true);
+        let tokens: Vec<&str> = vec!["1970-07-31"];
+        assert!(evaluate_line(&mut parse_expression("date(0) match \\d{4}-\\d{2}-\\d{2}").unwrap(), &tokens).is_err());
     }
 
+    #[test]
+    fn test_in() { 
+        let tokens: Vec<&str> = vec!["test"];
+        assert!(evaluate_line(&mut parse_expression("string(*) in [this, is, a, test]").unwrap(), &tokens).unwrap() == true);
+    }
 
     #[test]
     fn test_multiple_token_eval() {    
         init();
 
-        let tokens: Vec<Token> = vec![create_token("1970-07-31"), create_token("1900-01-01"), create_token("test")];
- 
-        assert!(parse_expression("date(*) == 1900-01-01", &tokens).unwrap() == false);
+        let tokens: Vec<&str> = vec!["1970-07-31", "1900-01-01", "test"];
+        assert!(evaluate_line(&mut parse_expression("date(*) == 2000-01-01").unwrap(), &tokens).unwrap() == false);
 
-        let tokens: Vec<Token> = vec![create_token("1970-07-31"), create_token("1970-07-31"), create_token("test")];
- 
-        assert!(parse_expression("date(*) == 1970-07-31", &tokens).unwrap() == true);
+        let tokens: Vec<&str> = vec!["1970-07-31", "1970-07-31", "test"];
+        assert!(evaluate_line(&mut parse_expression("date(*) == 1970-07-31").unwrap(), &tokens).unwrap() == true);
     }
 
 
@@ -264,14 +256,14 @@ mod tests {
     fn test_parsing_should_pass() {
         init();
 
-        let tokens: Vec<Token> = vec![create_token("1970-07-31")];
+        let tokens: Vec<&str> = vec!["1970-07-31"];
 
-        assert!(parse_expression("date(0) in [1970-07-31, now()]", &tokens).is_ok());
-        assert!(parse_expression("date(0) == 1970-07-31 && date(0) == 1970-07-31 || date(0) == 1970-07-31", &tokens).is_ok());
-        assert!(parse_expression("date(0) == 1970-07-31 && date(0) == 1970-07-31 || date(0) == 1970-07-30", &tokens).is_ok());
+        assert!(evaluate_line(&mut parse_expression("date(0) in [1970-07-31, now()]").unwrap(), &tokens).is_ok());
+        assert!(evaluate_line(&mut parse_expression("date(0) == 1970-07-31 && date(0) == 1970-07-31 || date(0) == 1970-07-31").unwrap(), &tokens).is_ok());
+        assert!(evaluate_line(&mut parse_expression("date(0) == 1970-07-31 && date(0) == 1970-07-31 || date(0) == 1970-07-30").unwrap(), &tokens).is_ok());
 
         // these are negative tests....
-        assert!(parse_expression("date(0) == 1970-07-31 && date(0) == 1970-07-30 || date(0) == 1970-07-30", &tokens).unwrap() == false);
-        assert!(parse_expression("date(0) == 1900-01-01", &tokens).unwrap() == false);
+        assert!(evaluate_line(&mut parse_expression("date(0) == 1970-07-31 && date(0) == 1970-07-30 || date(0) == 1970-07-30").unwrap(), &tokens).unwrap() == false);
+        assert!(evaluate_line(&mut parse_expression("date(0) == 1900-01-01").unwrap(), &tokens).unwrap() == false);
     }
 }
