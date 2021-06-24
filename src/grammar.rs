@@ -83,17 +83,21 @@ fn eval(stack: &mut Vec<Pair<Rule>>, rule: Rule, tokens: &Vec<&str>) -> Result<b
     let type_term = stack.pop().unwrap();       // date, time, timestamp, email, ... 
 
     // find n'th (type_term_arg) typeTerm among the token whose type == type_term..
-    trace!("type_term.as_str {:?}", type_term.as_str());
+    trace!("type_term.as_str {:?}", type_term.as_str());    
 
     match type_term_arg.as_str() {
         "*" => {
             // eval all tokens that matches the type_term, e.g: 
             //   true for: date(*) == 1900-01-01    for tokens:[1900-01-01, 1900-01-01]
-            //   false for: date(*) == 1900-01-01   for tokens:[1970-07-31, 1900-01-01]
-            return Ok(tokens
-                    .into_iter()
-                    .any(|t| eval_op(type_term.as_str(), op.as_rule(), value.clone(), t)
-                    .unwrap()));
+            //   false for: date(*) == 1900-01-01   for tokens:[1970-07-31, 1900-01-01]    
+
+            // TODO turn this into a nice into_iter().any(...) and get the Err propagation working properly with unwrap...
+            for t in tokens {
+                if eval_op(type_term.as_str(), op.as_rule(), value.clone(), t)? {
+                   return Ok(true);
+                }
+            }                    
+            Ok(false)
         },
         index => {
             let n = index.parse::<usize>().unwrap();
