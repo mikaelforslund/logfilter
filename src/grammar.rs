@@ -64,6 +64,10 @@ fn eval_op(type_term: &str, op: Rule, value: Pair<Rule>, token_val: &str) -> Res
                     let tokens:Vec<Token> = value.into_inner().map(|rule| token.new(rule.as_str())).collect();
                     return Ok(tokens.contains(&token));
                 },
+                Rule::not_in_op =>  {             
+                    let tokens:Vec<Token> = value.into_inner().map(|rule| token.new(rule.as_str())).collect();
+                    return Ok(!tokens.contains(&token));
+                },
                 _ => Ok(false) 
             }       
         },
@@ -164,6 +168,7 @@ fn process_grammar<'a>(pair: Pair<'a, Rule>, stack: &mut Vec<Pair<'a, Rule>>, to
         Rule::type_term_arg => stack.push(pair),
         Rule::op => stack.push(pair.into_inner().next().unwrap()),
         Rule::in_op => stack.push(pair),
+        Rule::not_in_op => stack.push(pair),
         Rule::value => stack.push(pair),
         Rule::list_expr => { pair.into_inner().map(atom).count(); },
         Rule::list_member_expr => stack.push(pair),
@@ -242,6 +247,12 @@ mod tests {
     fn test_in() { 
         let tokens: Vec<&str> = vec!["test"];
         assert!(evaluate_line(&mut parse_expression("string(*) in [this, is, a, test]").unwrap(), &tokens).unwrap() == true);
+    }
+
+    #[test]
+    fn test_not_in() { 
+        let tokens: Vec<&str> = vec!["blaha"];
+        assert!(evaluate_line(&mut parse_expression("string(*) !in [this, is, a, test]").unwrap(), &tokens).unwrap() == true);
     }
 
     #[test]

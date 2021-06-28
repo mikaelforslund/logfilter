@@ -8,7 +8,7 @@ grouped_expr = _{ "(" ~ expr ~  ")" }
 
 compound_expr = _{ simple_expr | contains_expr }
 
-contains_expr = { type_expr ~ in_op ~ list_expr }       // e.g. date(1) in [1970-07-31, now()] 
+contains_expr = { type_expr ~ (in_op | not_in_op) ~ list_expr }       // e.g. date(1) in [1970-07-31, now()] 
 
 simple_expr = { type_expr ~ op ~ value }                // e.g. date(1) > 1970-07-31, internal check for compatibility needed...
 
@@ -42,6 +42,7 @@ eq = { "==" }
 neq = { "!=" }
 match_op = { "match" }
 in_op = { "in" }
+not_in_op = { "!in" }
 
 value = { string } 
 
