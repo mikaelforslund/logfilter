@@ -57,7 +57,7 @@ mod tests {
 
         #[test]
         fn test_simple_args() {                     
-            let arg_vec = vec!["semfilter", "date(0) == 1900-01-01", "--token-sep=,", "--data-def=date|yyyy/MM/dd"];
+            let arg_vec = vec!["semfilter", "date(0) == 1900-01-01", r#"--token-sep=",""#, "--data-def=date|yyyy/MM/dd"];
             let _target_vec= vec![DataDef{type_name:String::from("date"), format:String::from("yyyy/MM/dd")}];
 
             let yaml = load_yaml!("cli.yaml");
@@ -67,7 +67,7 @@ mod tests {
             let token_sep = get_token_sep(&matches);
 
             assert!(matches!(data_defs, _target_vec));
-            assert!(token_sep.as_str() == ",");            
+            assert!(token_sep.as_str() == r#"",""#);            
 
             //println!("data_defs: {:?}", data_defs);
             //println!("token_sep: {:?}", token_sep);
