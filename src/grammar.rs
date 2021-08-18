@@ -4,7 +4,7 @@ use pest::prec_climber::{Assoc, Operator, PrecClimber};
 use pest::Parser;
 use pest::iterators::{Pair, Pairs};
 use lazy_static::lazy_static;
-use crate::tokenizer::{Token, create_token};
+use crate::tokenizer::{Token};
 use log::{trace};
 
 #[derive(Parser)]
@@ -45,15 +45,15 @@ fn eval_op(type_term: &str, op: Rule, value: Pair<Rule>, format: Option<&str>, t
 
     println!("eval_op.format: {:?}", format);
 
-    match create_token(type_term, token_val, format) {
+    match Token::new(type_term, token_val, format) {
         Ok(token) => {
             match op {
-                Rule::eq => Ok(token == token.new(value.as_str(), format)?),
-                Rule::neq => Ok(token != token.new(value.as_str(), format)?),
-                Rule::lt => Ok(token < token.new(value.as_str(), format)?),
-                Rule::gt => Ok(token > token.new(value.as_str(), format)?),
-                Rule::lte => Ok(token <= token.new(value.as_str(), format)?),
-                Rule::gte => Ok(token >= token.new(value.as_str(), format)?),
+                Rule::eq => Ok(token == token.copy(value.as_str(), format)?),
+                Rule::neq => Ok(token != token.copy(value.as_str(), format)?),
+                Rule::lt => Ok(token < token.copy(value.as_str(), format)?),
+                Rule::gt => Ok(token > token.copy(value.as_str(), format)?),
+                Rule::lte => Ok(token <= token.copy(value.as_str(), format)?),
+                Rule::gte => Ok(token >= token.copy(value.as_str(), format)?),
                         
                 Rule::match_op => {
                     match &token {
@@ -63,11 +63,11 @@ fn eval_op(type_term: &str, op: Rule, value: Pair<Rule>, format: Option<&str>, t
                     } 
                 },
                 Rule::in_op =>  {             
-                    let tokens:Vec<Token> = value.into_inner().map(|rule| token.new(rule.as_str(), format).unwrap()).collect();
+                    let tokens:Vec<Token> = value.into_inner().map(|rule| token.copy(rule.as_str(), format).unwrap()).collect();
                     return Ok(tokens.contains(&token));
                 },
                 Rule::not_in_op =>  {             
-                    let tokens:Vec<Token> = value.into_inner().map(|rule| token.new(rule.as_str(), format).unwrap()).collect();
+                    let tokens:Vec<Token> = value.into_inner().map(|rule| token.copy(rule.as_str(), format).unwrap()).collect();
                     return Ok(!tokens.contains(&token));
                 },
                 _ => Ok(false) 
