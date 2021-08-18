@@ -60,7 +60,7 @@ Simple command line tool to filter unstructured text data. Allows tokens to be c
 
 An simple expression is of the form:
 
-`dataType(index [, regexpformat specifier]) OPERATOR VALUE`
+`dataType(index [, format specifier]) OPERATOR VALUE`
 
 where the index is the **0-indexed token** in the row currently being evaluated and the optional **format specifier** the format to look for. Currently only date and time formats are supported, a format specified for other datatypes is ignored. The index can also be a whildcard `*` which then means match any occurance of the token of that datatype in the row. 
 

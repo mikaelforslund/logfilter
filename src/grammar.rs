@@ -40,18 +40,20 @@ pub fn evaluate_line(grammar: &mut Pairs<Rule>, tokens: &Vec<&str>) -> Result<bo
 /// Evaluates two tokens based on its infix operator and returns Result. Supported operators 
 /// are defined in the grammar file. 
 /// 
-fn eval_op(type_term: &str, op: Rule, value: Pair<Rule>, token_val: &str) -> Result<bool, String> {
-    trace!("op {:?}, value: {:?}, token {:?}", op, value, token_val);
+fn eval_op(type_term: &str, op: Rule, value: Pair<Rule>, format: Option<&str>, token_val: &str) -> Result<bool, String> {
+    trace!("op {:?}, value: {:?}, token {:?}, format {:?}", op, value, token_val, format);
 
-    match create_token(type_term, token_val) {
+    println!("eval_op.format: {:?}", format);
+
+    match create_token(type_term, token_val, format) {
         Ok(token) => {
             match op {
-                Rule::eq => Ok(token == token.new(value.as_str())),
-                Rule::neq => Ok(token != token.new(value.as_str())),
-                Rule::lt => Ok(token < token.new(value.as_str())),
-                Rule::gt => Ok(token > token.new(value.as_str())),
-                Rule::lte => Ok(token <= token.new(value.as_str())),
-                Rule::gte => Ok(token >= token.new(value.as_str())),
+                Rule::eq => Ok(token == token.new(value.as_str(), format)?),
+                Rule::neq => Ok(token != token.new(value.as_str(), format)?),
+                Rule::lt => Ok(token < token.new(value.as_str(), format)?),
+                Rule::gt => Ok(token > token.new(value.as_str(), format)?),
+                Rule::lte => Ok(token <= token.new(value.as_str(), format)?),
+                Rule::gte => Ok(token >= token.new(value.as_str(), format)?),
                         
                 Rule::match_op => {
                     match &token {
@@ -61,11 +63,11 @@ fn eval_op(type_term: &str, op: Rule, value: Pair<Rule>, token_val: &str) -> Res
                     } 
                 },
                 Rule::in_op =>  {             
-                    let tokens:Vec<Token> = value.into_inner().map(|rule| token.new(rule.as_str())).collect();
+                    let tokens:Vec<Token> = value.into_inner().map(|rule| token.new(rule.as_str(), format).unwrap()).collect();
                     return Ok(tokens.contains(&token));
                 },
                 Rule::not_in_op =>  {             
-                    let tokens:Vec<Token> = value.into_inner().map(|rule| token.new(rule.as_str())).collect();
+                    let tokens:Vec<Token> = value.into_inner().map(|rule| token.new(rule.as_str(), format).unwrap()).collect();
                     return Ok(!tokens.contains(&token));
                 },
                 _ => Ok(false) 
@@ -82,9 +84,15 @@ fn eval(stack: &mut Vec<Pair<Rule>>, rule: Rule, tokens: &Vec<&str>) -> Result<b
     trace!("eval.stack: {:?}", stack);
 
     let value = stack.pop().unwrap();           // simple value or comma separated value string....
-    let op = stack.pop().unwrap();
+    let op = stack.pop().unwrap();  
+
+    // the grammar will parse date(n) and date(n, format), if the latter the stack will have one additional element
+    let format:Option<&str> = if stack.len() == 3 { Some(stack.pop().unwrap().as_str()) } else { None }; 
+
     let type_term_arg = stack.pop().unwrap();   // n in type(n)
     let type_term = stack.pop().unwrap();       // date, time, timestamp, email, ... 
+
+    println!("format: {:?}", format);
 
     // find n'th (type_term_arg) typeTerm among the token whose type == type_term..
     trace!("type_term.as_str {:?}", type_term.as_str());    
@@ -96,8 +104,8 @@ fn eval(stack: &mut Vec<Pair<Rule>>, rule: Rule, tokens: &Vec<&str>) -> Result<b
             //   false for: date(*) == 1900-01-01   for tokens:[1970-07-31, 1900-01-01]    
 
             // TODO turn this into a nice into_iter().any(...) and get the Err propagation working properly with unwrap...
-            for t in tokens {
-                if eval_op(type_term.as_str(), op.as_rule(), value.clone(), t)? {
+            for t in tokens {                
+                if eval_op(type_term.as_str(), op.as_rule(), value.clone(), format, t)? {                    
                    return Ok(true);
                 }
             }                    
@@ -114,8 +122,8 @@ fn eval(stack: &mut Vec<Pair<Rule>>, rule: Rule, tokens: &Vec<&str>) -> Result<b
                 // eval the token that matched  the type_term, e.g: 
                 //   true for: date(1) == 1900-01-01    for tokens:[1900-01-01, 1970-07-31]
                 //   false for: date(2) == 1900-01-01   for tokens:[1900-01-01, 1970-07-31]
-                Rule::simple_expr => eval_op(type_term.as_str(), op.as_rule(), value, tokens[n]), 
-                Rule::contains_expr => return eval_op(type_term.as_str(), op.as_rule(), value, tokens[n]),
+                Rule::simple_expr => eval_op(type_term.as_str(), op.as_rule(), value, format, tokens[n]), 
+                Rule::contains_expr => return eval_op(type_term.as_str(), op.as_rule(), value, format, tokens[n]),
                 _ => return Err(String::from("Unexpected rule matched!")),
             } 
         }
@@ -166,6 +174,7 @@ fn process_grammar<'a>(pair: Pair<'a, Rule>, stack: &mut Vec<Pair<'a, Rule>>, to
         Rule::type_expr => { pair.into_inner().map(atom).count(); },
         Rule::type_term => stack.push(pair),
         Rule::type_term_arg => stack.push(pair),
+        Rule::format_expr => stack.push(pair),
         Rule::op => stack.push(pair.into_inner().next().unwrap()),
         Rule::in_op => stack.push(pair),
         Rule::not_in_op => stack.push(pair),
@@ -225,6 +234,14 @@ mod tests {
     }
 
     #[test]
+    fn test_date_format_expression() {
+        assert!(parse_expression("date(0, %Y/%m/%d) == 1970/07/31").is_ok());
+
+        // TODO should fail, need to decide if we should do eager evaluation or not
+        //assert!(parse_expression("date(0, %Y-%m-%d) == 1970/07/31").is_ok());
+    }
+
+    #[test]
     fn test_error_reporting() {    
         init();
 
@@ -235,6 +252,12 @@ mod tests {
 
         // should fail
         assert!(evaluate_line(&mut parse_expression("date(9) == 1900-01-01").unwrap(), &tokens).unwrap() == false);
+    }
+
+    #[test]
+    fn test_date_format() {
+        assert!(evaluate_line(&mut parse_expression("date(0, %Y/%m/%d) == 1970/07/31").unwrap(), &vec!("1970/07/31")).is_ok());
+        assert!(evaluate_line(&mut parse_expression("date(0, %Y-%m-%d) == 1970/07/31").unwrap(), &vec!("1970-07-31")).is_err());
     }
 
     #[test]
@@ -263,7 +286,7 @@ mod tests {
         assert!(evaluate_line(&mut parse_expression("date(*) == 2000-01-01").unwrap(), &tokens).unwrap() == false);
 
         let tokens: Vec<&str> = vec!["1970-07-31", "1970-07-31", "test"];
-        assert!(evaluate_line(&mut parse_expression("date(*) == 1970-07-31").unwrap(), &tokens).unwrap() == true);
+        assert!(evaluate_line(&mut parse_expression("date(0) == 1970-07-31").unwrap(), &tokens).unwrap() == true);
     }
 
 

@@ -26,26 +26,33 @@ pub enum Token {
 }
 
 impl Token {
-    /// Implements a copy factory method for a Token 
-    pub fn new(&self, value: &str) -> Token {
+    /// Implements a copy factory method for a Token, currently only tyhe date token is using the format  
+    pub fn new(&self, value: &str, format: Option<&str>) -> Result<Token, String> {
+        println!("new:: {:?}", format);
+
         match &*self {            
-            Token::DateToken(_, f) => { 
+            Token::DateToken(_, f) => {
+                // either use the predefined format or the one passed on from the expression
+                let f = if let Some(format) = format { format } else { f };
+
+                println!("format_string: {:?}", f);
+
                 if value == "now()".to_string() {
-                    Token::DateToken(Utc::now().naive_utc().date(), f.to_string())
+                    Ok(Token::DateToken(Utc::now().naive_utc().date(), f.to_string()))
                 } else {
-                    return Token::DateToken(NaiveDate::parse_from_str(value, f).unwrap(), f.to_string());
+                    match try_parse_date(value, f) {
+                        Err(x) => Err(x),
+                        Ok(t) => Ok(t)
+                    }// Token::DateToken(NaiveDate::parse_from_str(value, f).unwrap(), f.to_string());
                 }
             },
-            Token::StringToken(_) =>  Token::StringToken(value.to_string()),
-            Token::IntegerToken(_) => { 
-                println!("value: {:?}", value);
-                Token::IntegerToken(value.parse().unwrap())
-            },
-            Token::NumberToken(_) => Token::NumberToken(value.parse().unwrap()),
-            Token::EmailToken(_) => Token::EmailToken(value.to_string()),
-            Token::Ipv4Token(_) => Token::Ipv4Token(value.parse().unwrap()),
-            Token::Ipv6Token(_) => Token::Ipv6Token(value.parse().unwrap()),
-            Token::SemVersionToken(_) => Token::SemVersionToken(value.parse().unwrap())
+            Token::StringToken(_) => Ok(Token::StringToken(value.to_string())),
+            Token::IntegerToken(_) => Ok(Token::IntegerToken(value.parse().unwrap())),
+            Token::NumberToken(_) => Ok(Token::NumberToken(value.parse().unwrap())),
+            Token::EmailToken(_) => Ok(Token::EmailToken(value.to_string())),
+            Token::Ipv4Token(_) => Ok(Token::Ipv4Token(value.parse().unwrap())),
+            Token::Ipv6Token(_) => Ok(Token::Ipv6Token(value.parse().unwrap())),
+            Token::SemVersionToken(_) => Ok(Token::SemVersionToken(value.parse().unwrap()))
         }
     }
 
@@ -68,12 +75,24 @@ impl Token {
     }
 }
 
+fn try_parse_date(value: &str, f: &str) -> Result<Token, String> {
+    let date_value = NaiveDate::parse_from_str(value, f);
+    if date_value.is_err() {
+        return Err(String::from(format!("Problem parsing date value {} using format '{}'", value, f)));
+    }
+
+    Ok(Token::DateToken(date_value.unwrap(), String::from(f)))
+}
+
 // TODO do we really need to record the format in the Token?
 // TODO make the format an additional argument to this function...
-pub fn create_token(type_term: &str, value: &str) -> Result<Token, String> {
+pub fn create_token(type_term: &str, value: &str, format: Option<&str>) -> Result<Token, String> {  
     match type_term {
-        type_term if type_term == "date" && DATE_REGEX.is_match(value) => 
-            Ok(Token::DateToken(NaiveDate::parse_from_str(value, "%Y-%m-%d").unwrap(), "%Y-%m-%d".to_string())),
+        type_term if type_term == "date" => 
+            match format {
+                Some(format) => try_parse_date(value, format),
+                None => try_parse_date(value, "%Y-%m-%d")
+            }
 
         type_term if type_term == "email" && EMAIL_REGEX.is_match(value) => 
             Ok(Token::EmailToken(String::from(value))),
@@ -140,13 +159,17 @@ mod tests {
     fn test_parse_token() {       
         init();
 
-        assert!(matches!(create_token("string", "test").unwrap(), Token::StringToken(_)));
-        assert!(matches!(create_token("number", "3.14").unwrap(), Token::NumberToken(_)));
-        assert!(matches!(create_token("integer", "10").unwrap(), Token::IntegerToken(_)));
-        assert!(matches!(create_token("email", "test@gmail.com").unwrap(), Token::EmailToken(_)));
-        assert!(matches!(create_token("ivp4", "127.0.0.1").unwrap(), Token::Ipv4Token(_)));
-        assert!(matches!(create_token("ivp6","1762:0:0:0:0:B03:1:AF18").unwrap(), Token::Ipv6Token(_)));
-        assert!(matches!(create_token("date", "1970-07-31").unwrap(), Token::DateToken(_, _)));
-        assert!(matches!(create_token("semver","1.0.0").unwrap(), Token::SemVersionToken(_)));
+        assert!(matches!(create_token("string", "test", None).unwrap(), Token::StringToken(_),));
+        assert!(matches!(create_token("number", "3.14", None).unwrap(), Token::NumberToken(_)));
+        assert!(matches!(create_token("integer", "10", None).unwrap(), Token::IntegerToken(_)));
+        assert!(matches!(create_token("email", "test@gmail.com", None).unwrap(), Token::EmailToken(_)));
+        assert!(matches!(create_token("ivp4", "127.0.0.1", None).unwrap(), Token::Ipv4Token(_)));
+        assert!(matches!(create_token("ivp6","1762:0:0:0:0:B03:1:AF18", None).unwrap(), Token::Ipv6Token(_)));
+        assert!(matches!(create_token("date", "1970-07-31", None).unwrap(), Token::DateToken(_, _)));
+        assert!(matches!(create_token("date", "1970/07/31", Some("%Y/%m/%d")).unwrap(), Token::DateToken(_, _)));
+        assert!(matches!(create_token("semver", "1.0.0", None).unwrap(), Token::SemVersionToken(_)));
+
+        // shoult fail
+        assert!(create_token("date", "1970/07/31", Some("%Y-%m-%d")).is_err());
     }
 }

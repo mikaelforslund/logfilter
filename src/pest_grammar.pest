@@ -12,13 +12,15 @@ contains_expr = { type_expr ~ (in_op | not_in_op) ~ list_expr }       // e.g. da
 
 simple_expr = { type_expr ~ op ~ value }                // e.g. date(1) > 1970-07-31, internal check for compatibility needed...
 
-type_expr = { type_term ~ "(" ~ type_term_arg ~ ")" }   // e.g. date(1) or date(*)
+type_expr = { type_term ~ "(" ~ type_term_arg ~ ("," ~ format_expr)? ~ ")"}   // e.g. date(1) or date(*) or date(*, yyyy-MM-dd)
 
 type_term = { 
     "date" | "time"| "timestamp" | "boolean" | "ipv4" 
   | "ipv6" | "semver" | "email" | "loglevel" | "number" 
   | "integer" | "float" | "string" | "semver"
 }  
+
+format_expr = { value }
 
 type_term_arg = { ASCII_DIGIT+ | "*" }
 
@@ -48,4 +50,4 @@ value = { string }
 
 string = _{ char* }
 
-char = _{ ASCII_ALPHANUMERIC | "." | "_" | "-" | "+" | "/" | "@" | "\\" | "{" | "}" | "^" | "$" |  "()" | ":" }
+char = _{ ASCII_ALPHANUMERIC | "." | "_" | "-" | "+" | "/" | "@" | "\\" | "{" | "}" | "^" | "%" | "$" |  "()" | ":" }
