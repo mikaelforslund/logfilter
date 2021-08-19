@@ -151,7 +151,7 @@ mod tests {
         assert!(matches!(Token::new("date", "1970/07/31", Some("%Y/%m/%d"), true).unwrap(), Token::DateToken(_, _, _)));
         assert!(matches!(Token::new("semver", "1.0.0", None, true).unwrap(), Token::SemVersionToken(_, _)));
 
-        // shoult fail
+        // should fail
         assert!(Token::new("date", "1970/07/31", Some("%Y-%m-%d"), true).is_err());
     }
 }

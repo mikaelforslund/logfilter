@@ -15,7 +15,7 @@ pub fn process_input(command_args: CommandArgs) -> Result<(), io::Error> {
     match command_args {
         CommandArgs { expr, data_def, token_regex } => {
     
-            println!("expr: {:?}  data_def: {:?},  token_sep: {:?}", expr, data_def, token_regex);
+            trace!("expr: {:?}  data_def: {:?},  token_sep: {:?}", expr, data_def, token_regex);
     
             match parse_expression(expr.as_str()) {
                 Ok(grammar) => {

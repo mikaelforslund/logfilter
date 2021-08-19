@@ -43,6 +43,13 @@ pub fn evaluate_line(grammar: &mut Pairs<Rule>, tokens: &Vec<&str>) -> Result<bo
 fn eval_op(type_term: &str, op: Rule, value: Pair<Rule>, format: Option<&str>, token_val: &str) -> Result<bool, String> {
     trace!("op {:?}, value: {:?}, token {:?}, format {:?}", op, value, token_val, format);
 
+    let process_match_op_token = |token: Token| -> Result<bool, String> { 
+        match &token {
+            Token::StringToken(_, _) => Ok(token.is_match(value.as_str())),
+            _ => Err(format!("Invalid token {}:{}, only string type allowed for match expr", type_term, token_val))
+        } 
+    };
+
     match Token::new_no_validation(type_term, token_val, format) {
         Ok(token) => {
             match op {
@@ -51,33 +58,22 @@ fn eval_op(type_term: &str, op: Rule, value: Pair<Rule>, format: Option<&str>, t
                 Rule::lt => Ok(token < token.copy(value.as_str(), format)?),
                 Rule::gt => Ok(token > token.copy(value.as_str(), format)?),
                 Rule::lte => Ok(token <= token.copy(value.as_str(), format)?),
-                Rule::gte => Ok(token >= token.copy(value.as_str(), format)?),
-                        
-                Rule::match_op => {
-                    match &token {
-                        Token::StringToken(_, _) => Ok(token.is_match(value.as_str())),
-                        _ => Err(format!("Invalid token type {}:{}, only string type is allowed for match expressions", 
-                                type_term, token_val))
-                    } 
-                },
-                Rule::in_op =>  {             
-                    let tokens:Vec<Token> = value.into_inner().map(|rule| token.copy(rule.as_str(), format).unwrap()).collect();
-                    return Ok(tokens.contains(&token));
-                },
-                Rule::not_in_op =>  {             
-                    let tokens:Vec<Token> = value.into_inner().map(|rule| token.copy(rule.as_str(), format).unwrap()).collect();
-                    return Ok(!tokens.contains(&token));
-                },
+                Rule::gte => Ok(token >= token.copy(value.as_str(), format)?),                        
+                Rule::match_op => process_match_op_token(token),
+                Rule::in_op => Ok(value.into_inner().any(|r| token.copy(r.as_str(), format).unwrap() == token)),
+                Rule::not_in_op => Ok(!value.into_inner().any(|r| token.copy(r.as_str(), format).unwrap() == token)),
+
+                // no match is fine, just move to the next token...
                 _ => Ok(false) 
-            }       
+            }
         },
+        // no match is fine, just move to the next token...
         Err(_) => Ok(false)
     }
 }
 
 /// Evaluates a tokenized string expression against a set of rules derived from the semfile grammar 
 /// [pest_grammar.pest](pest_grammar.pest)
-/// 
 fn eval(stack: &mut Vec<Pair<Rule>>, rule: Rule, tokens: &Vec<&str>) -> Result<bool, String> {
     trace!("eval.stack: {:?}", stack);
 
@@ -94,34 +90,30 @@ fn eval(stack: &mut Vec<Pair<Rule>>, rule: Rule, tokens: &Vec<&str>) -> Result<b
     trace!("type_term.as_str {:?}", type_term.as_str());    
 
     match type_term_arg.as_str() {
+        // asterix mean all of them...
         "*" => {
             // eval all tokens that matches the type_term, e.g: 
             //   true for: date(*) == 1900-01-01    for tokens:[1900-01-01, 1900-01-01]
             //   false for: date(*) == 1900-01-01   for tokens:[1970-07-31, 1900-01-01]    
-
-            // TODO turn this into a nice into_iter().any(...) and get the Err propagation working properly with unwrap...
-            for t in tokens {                
-                if eval_op(type_term.as_str(), op.as_rule(), value.clone(), format, t)? {                    
-                   return Ok(true);
-                }
-            }                    
-            Ok(false)
+            Ok(tokens.into_iter().all(|t| eval_op(type_term.as_str(), op.as_rule(), value.clone(), format, t).unwrap()))
         },
+        
+        // if not an asterix its an index to a work in the current row...
         index => {
-            let n = index.parse::<usize>().unwrap();
+            match index.parse::<usize>().unwrap() {                
+                index if tokens.is_empty() || tokens.len()-1 < index => Ok(false),
 
-            if tokens.is_empty() || tokens.len()-1 < n {
-                return Ok(false);
-            }          
-            
-            match rule {                
-                // eval the token that matched  the type_term, e.g: 
-                //   true for: date(1) == 1900-01-01    for tokens:[1900-01-01, 1970-07-31]
-                //   false for: date(2) == 1900-01-01   for tokens:[1900-01-01, 1970-07-31]
-                Rule::simple_expr => eval_op(type_term.as_str(), op.as_rule(), value, format, tokens[n]), 
-                Rule::contains_expr => return eval_op(type_term.as_str(), op.as_rule(), value, format, tokens[n]),
-                _ => return Err(String::from("Unexpected rule matched!")),
-            } 
+                index => {
+                    match rule {                
+                        // eval the token that matched  the type_term, e.g: 
+                        //   true for: date(1) == 1900-01-01    for tokens:[1900-01-01, 1970-07-31]
+                        //   false for: date(2) == 1900-01-01   for tokens:[1900-01-01, 1970-07-31]
+                        Rule::simple_expr => eval_op(type_term.as_str(), op.as_rule(), value, format, tokens[index]), 
+                        Rule::contains_expr => return eval_op(type_term.as_str(), op.as_rule(), value, format, tokens[index]),
+                        _ => return Err(String::from("Unexpected rule matched!")),
+                    } 
+                }        
+            }
         }
     } 
 }
@@ -139,34 +131,30 @@ fn process_grammar<'a>(pair: Pair<'a, Rule>, stack: &mut Vec<Pair<'a, Rule>>, to
 
     let infix = |lhs: Result<bool, String>, op: Pair<Rule>, rhs: Result<bool, String>| 
         -> Result<bool, String> {
+            
+        trace!("infix: lhs: {:?}, rhs: {:?}", lhs, rhs);
 
         match op.as_rule() {
-            Rule::and_op => {
-                trace!("andOp: lhs: {:?}, rhs: {:?}", lhs, rhs);
-                Ok(lhs? && rhs?)
-            },
-            Rule::or_op => { 
-                trace!("orOp: lhs: {:?}, rhs: {:?}", lhs, rhs);
-                Ok(lhs? || rhs?)
-            },
+            Rule::and_op => Ok(lhs? && rhs?),
+            Rule::or_op =>  Ok(lhs? || rhs?),
             _ => Err(String::from("Unexpected rule found!"))
        }
     };
 
-    let inner_rule = pair.clone();
-    trace!("{:?} {:?}", inner_rule.as_rule(),  inner_rule.as_str());
+    let process_tokens = |stack: &mut Vec<Pair<'a, Rule>>, tokens, pair: Pair<'a, Rule>| 
+        -> Result<bool, String> {
+
+        pair.into_inner().map(|pair| process_grammar(pair, stack, tokens)).count();
+        eval(stack, Rule::simple_expr, tokens)
+    };
+
+    //let inner_rule = pair.clone();
+    //trace!("{:?} {:?}", inner_rule.as_rule(),  inner_rule.as_str());
 
     match pair.as_rule() {
-        Rule::expr => {  return CLIMBER.climb(pair.into_inner(), atom, infix);  },
-        Rule::simple_expr => { 
-            pair.into_inner().map(atom).count();
-            return eval(stack, Rule::simple_expr, tokens);
-        },
-        Rule::contains_expr => { 
-            pair.into_inner().map(atom).count();
-            return eval(stack, Rule::simple_expr, tokens);
-        },
-
+        Rule::expr => {                                                                                                                                                                                                                                  return CLIMBER.climb(pair.into_inner(), atom, infix); }, 
+        Rule::simple_expr => { return process_tokens(stack, tokens, pair); },
+        Rule::contains_expr => { return process_tokens(stack, tokens, pair); },
         Rule::type_expr => { pair.into_inner().map(atom).count(); },
         Rule::type_term => stack.push(pair),
         Rule::type_term_arg => stack.push(pair),
