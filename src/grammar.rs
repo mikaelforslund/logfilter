@@ -43,9 +43,7 @@ pub fn evaluate_line(grammar: &mut Pairs<Rule>, tokens: &Vec<&str>) -> Result<bo
 fn eval_op(type_term: &str, op: Rule, value: Pair<Rule>, format: Option<&str>, token_val: &str) -> Result<bool, String> {
     trace!("op {:?}, value: {:?}, token {:?}, format {:?}", op, value, token_val, format);
 
-    println!("eval_op.format: {:?}", format);
-
-    match Token::new(type_term, token_val, format) {
+    match Token::new_no_validation(type_term, token_val, format) {
         Ok(token) => {
             match op {
                 Rule::eq => Ok(token == token.copy(value.as_str(), format)?),
@@ -57,7 +55,7 @@ fn eval_op(type_term: &str, op: Rule, value: Pair<Rule>, format: Option<&str>, t
                         
                 Rule::match_op => {
                     match &token {
-                        Token::StringToken(_) => Ok(token.is_match(value.as_str())),
+                        Token::StringToken(_, _) => Ok(token.is_match(value.as_str())),
                         _ => Err(format!("Invalid token type {}:{}, only string type is allowed for match expressions", 
                                 type_term, token_val))
                     } 
@@ -91,8 +89,6 @@ fn eval(stack: &mut Vec<Pair<Rule>>, rule: Rule, tokens: &Vec<&str>) -> Result<b
 
     let type_term_arg = stack.pop().unwrap();   // n in type(n)
     let type_term = stack.pop().unwrap();       // date, time, timestamp, email, ... 
-
-    println!("format: {:?}", format);
 
     // find n'th (type_term_arg) typeTerm among the token whose type == type_term..
     trace!("type_term.as_str {:?}", type_term.as_str());    
@@ -238,7 +234,7 @@ mod tests {
         assert!(parse_expression("date(0, %Y/%m/%d) == 1970/07/31").is_ok());
 
         // TODO should fail, need to decide if we should do eager evaluation or not
-        //assert!(parse_expression("date(0, %Y-%m-%d) == 1970/07/31").is_ok());
+        //assert!(parse_expression("date(0, %Y-%m-%d) == 1970/07/31").is_err());
     }
 
     #[test]
