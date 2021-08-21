@@ -8,20 +8,22 @@ Simple command line tool to filter unstructured text data. Allows tokens to be c
 ### Usage
 Simple command line tool to filter unstructured text data. Allows tokens to be cast to data types, filter data using an expression language, and sort the result.
 
-    USAGE:
-        semfilter [FLAGS] [OPTIONS] expr [<inputstream]
+```regexp
+USAGE:
+     semfilter [FLAGS] [OPTIONS] expr [<inputstream]
 
-    FLAGS:
-        -h, --help       Prints help information
-        -V, --version    Prints version information
-        -v               Sets the level of verbosity
+  FLAGS:
+      -h, --help       Prints help information
+      -V, --version    Prints version information
 
-    OPTIONS:
-        -t, --token-sep <regex>   Specifies how tokens are separated in a row, e.g ",|\s|\t",  default is WHITESPACE        
-        -s, --quote-string        Surround a string with single quotes, default a string is a single token
+  OPTIONS:
+     -t, --token-sep <regex> A regexp that specifies a token separator in a row, e.g: ,|\s|\t , default is WHITESPACE        
+     -s, --quote-string      Surround a string with single quotes, default a string is a single token
 
-    ARGS:
-        <expr>    The expression to use to filter the input rows, in douple quotes, e.g. "date(0) == 1900-01-01"
+  ARGS:
+     <expr>    The expression to use to filter the input rows, in douple quotes, e.g. date(0) == 1900-01-01
+```
+
 <br>
 
 **Currently supported datatypes:**

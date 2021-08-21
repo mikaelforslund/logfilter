@@ -90,15 +90,14 @@ fn eval(stack: &mut Vec<Pair<Rule>>, rule: Rule, tokens: &Vec<&str>) -> Result<b
     trace!("type_term.as_str {:?}", type_term.as_str());    
 
     match type_term_arg.as_str() {
-        // asterix mean all of them...
         "*" => {
-            // eval all tokens that matches the type_term, e.g: 
-            //   true for: date(*) == 1900-01-01    for tokens:[1900-01-01, 1900-01-01]
-            //   false for: date(*) == 1900-01-01   for tokens:[1970-07-31, 1900-01-01]    
-            Ok(tokens.into_iter().all(|t| eval_op(type_term.as_str(), op.as_rule(), value.clone(), format, t).unwrap()))
+            // eval all tokens to see if any matches the type_term, e.g: 
+            //   true for: date(*) == 1900-01-01    for tokens:[1970-07-31, 1900-01-01]
+            //   false for: string(*) == mikael   for tokens:[test, 42]    
+            Ok(tokens.into_iter().any(|t| eval_op(type_term.as_str(), op.as_rule(), value.clone(), format, t).unwrap()))
         },
         
-        // if not an asterix its an index to a work in the current row...
+        // otherwise if not an asterix its a zero-based index to a word in the current row...
         index => {
             match index.parse::<usize>().unwrap() {                
                 index if tokens.is_empty() || tokens.len()-1 < index => Ok(false),
@@ -218,15 +217,25 @@ mod tests {
     }
 
     #[test]
+    fn test_invalid_type() {    
+        assert!(parse_expression("xyz(0) == 1970/07/31").is_err());
+    }
+
+    #[test]
+    fn test_invalid_index_type() {    
+        assert!(parse_expression("date(blaha) == 1970/07/31").is_err());
+    }
+
+    #[test]
     fn test_date_format_expression() {
         assert!(parse_expression("date(0, %Y/%m/%d) == 1970/07/31").is_ok());
 
         // TODO should fail, need to decide if we should do eager evaluation or not
-        //assert!(parse_expression("date(0, %Y-%m-%d) == 1970/07/31").is_err());
+        //assert!(evaluate_line(&mut parse_expression("date(0, %Y-%m-%d) == 1970/07/31").unwrap(), &vec!("1970/07/31")).is_err());
     }
 
     #[test]
-    fn test_error_reporting() {    
+    fn test_type_indexing() {    
         init();
 
         let tokens: Vec<&str> = vec!["1970-07-31", "1900-01-01", "42", "test"];
@@ -239,6 +248,17 @@ mod tests {
     }
 
     #[test]
+    fn test_asterix_indexing() {    
+        init();
+
+        let tokens: Vec<&str> = vec!["test", "42", "mikael"];
+
+        assert!(evaluate_line(&mut parse_expression("string(*) == mikael").unwrap(), &tokens).is_ok());
+        assert!(if let Ok(false) = evaluate_line(&mut parse_expression("string(*) == fail").unwrap(), &tokens) { true } else { false });
+    }
+
+
+    #[test]
     fn test_date_format() {
         assert!(evaluate_line(&mut parse_expression("date(0, %Y/%m/%d) == 1970/07/31").unwrap(), &vec!("1970/07/31")).is_ok());
         assert!(evaluate_line(&mut parse_expression("date(0, %Y-%m-%d) == 1970/07/31").unwrap(), &vec!("1970-07-31")).is_err());
@@ -247,7 +267,10 @@ mod tests {
     #[test]
     fn test_match() { 
         let tokens: Vec<&str> = vec!["1970-07-31"];
-        assert!(evaluate_line(&mut parse_expression("date(0) match \\d{4}-\\d{2}-\\d{2}").unwrap(), &tokens).is_err());
+
+        assert!(if let Ok(true) = evaluate_line(&mut parse_expression(r"string(0) match \d{4}").unwrap(), &tokens) { true } else { false });
+        assert!(if let Ok(false) = evaluate_line(&mut parse_expression(r"string(0) match abc").unwrap(), &tokens) { true } else { false });
+        assert!(if let Ok(true) = evaluate_line(&mut parse_expression(r"string(0) match \d{4}-\d{2}-\d{2}").unwrap(), &tokens) { true } else {false });
     }
 
     #[test]
@@ -273,9 +296,8 @@ mod tests {
         assert!(evaluate_line(&mut parse_expression("date(0) == 1970-07-31").unwrap(), &tokens).unwrap() == true);
     }
 
-
     #[test]
-    fn test_parsing_should_pass() {
+    fn test_parsing_compositions() {
         init();
 
         let tokens: Vec<&str> = vec!["1970-07-31"];

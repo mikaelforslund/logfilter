@@ -83,17 +83,17 @@ impl Token {
         }
     }
 
-    fn get_format(&self) -> Option<&str> {        
+    pub fn get_format(&self) -> Option<&str> {        
         let (_, _, format) = self.get_value_tuple(); 
         format
     }
 
-    fn get_value(&self) -> String {
+    pub fn get_value(&self) -> String {
         let (_, value, _) = self.get_value_tuple();
         value
     }
 
-    fn get_type(&self) -> String {
+    pub fn get_type(&self) -> String {
         let (token_type, _, _) = self.get_value_tuple();
         token_type
     }
@@ -150,8 +150,31 @@ mod tests {
         assert!(matches!(Token::new("date", "1970-07-31", None, true).unwrap(), Token::DateToken(_, _, _)));
         assert!(matches!(Token::new("date", "1970/07/31", Some("%Y/%m/%d"), true).unwrap(), Token::DateToken(_, _, _)));
         assert!(matches!(Token::new("semver", "1.0.0", None, true).unwrap(), Token::SemVersionToken(_, _)));
+    }
 
-        // should fail
+    #[test]
+    fn test_copy() {       
+        let t = Token::new("string", "string_value", None, true);
+        let copy_t = t.unwrap().copy("new_value", None).unwrap();
+
+        assert!(copy_t.get_value() == "new_value");
+        assert!(copy_t.get_type() == "string");
+    }
+
+    #[test]
+    fn test_parse_invalid_format_specifier() {       
         assert!(Token::new("date", "1970/07/31", Some("%Y-%m-%d"), true).is_err());
+    }
+
+    #[test]
+    fn test_is_match() {       
+        assert!(Token::new("string", "test", None, true).unwrap().is_match("test"));
+        assert!(!Token::new("string", "test", None, true).unwrap().is_match("blaha"));
+    }
+
+
+    #[test]
+    fn test_parse_invalid_token() {       
+        assert!(Token::new("invalid", "1.0.0", None, true).is_err());
     }
 }
