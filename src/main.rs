@@ -1,8 +1,7 @@
-
-mod tokenizer;
-mod grammar;
 mod cli;
-mod processor; 
+mod grammar;
+mod processor;
+mod tokenizer;
 
 #[macro_use]
 extern crate clap;
