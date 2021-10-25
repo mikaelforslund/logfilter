@@ -49,11 +49,11 @@ impl Token {
                 String::from(type_term),
                 String::from(value),
             )),
-            "ivp4" if validate && IPV4_REGEX.is_match(value) => Ok(Token::Ipv4(
+            "ivp4" if validate && value.parse::<Ipv4Addr>().is_ok() => Ok(Token::Ipv4(
                 String::from(type_term),
                 value.parse().unwrap(),
             )),
-            "ivp6" if validate && IPV6_REGEX.is_match(value) => Ok(Token::Ipv6(
+            "ivp6" if validate && value.parse::<Ipv6Addr>().is_ok() => Ok(Token::Ipv6(
                 String::from(type_term),
                 value.parse().unwrap(),
             )),
@@ -151,9 +151,6 @@ impl Token {
 lazy_static! {
     static ref DATE_REGEX: Regex = Regex::new(r"^\d{4}-\d{2}-\d{2}$").unwrap();
     static ref EMAIL_REGEX: Regex = Regex::new(r"^\S+@\S+\.\S+$").unwrap();
-    static ref IPV4_REGEX: Regex = Regex::new(r"^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$").unwrap();
-    static ref IPV6_REGEX: Regex =
-        Regex::new(r"^(([0-9a-fA-F]{0,4}:){1,7}[0-9a-fA-F]{0,4})$").unwrap();
     static ref NUMBER_REGEX: Regex = Regex::new(r"^\d+\.(\d{1,2})+$").unwrap();
     static ref INTEGER_REGEX: Regex = Regex::new(r"^\d+$").unwrap();
     static ref SEMVER_REGEX: Regex =
