@@ -1,16 +1,16 @@
-semfilter
+logfilter
 ================
 Simple command line tool to filter unstructured text data. Allows tokens to be cast to data types, filter data using an expression language, and sort the result.
 
 ## License
-**semfilter** is licensed under the MIT license.
+**logfilter** is licensed under the MIT license.
 
 ### Usage
 Simple command line tool to filter unstructured text data. Allows tokens to be cast to data types, filter data using an expression language, and sort the result.
 
 ```regexp
 USAGE:
-     semfilter [FLAGS] [OPTIONS] expr [<inputstream]
+     logfilter [FLAGS] [OPTIONS] expr [<inputstream]
 
   FLAGS:
       -h, --help       Prints help information
@@ -82,7 +82,7 @@ this line should be echoed out 1900-01-01 the love
 
 This example uses a date formatter and logical operators to form an expression
 ```
-$ semfilter "date(0, yyyy/mm/dd) == 1970/07/31 || date(0) >= 1900-01-01" < file.txt
+$ logfilter "date(0, yyyy/mm/dd) == 1970/07/31 || date(0) >= 1900-01-01" < file.txt
 the love for this file is amazing 1900-01-01
 string ivp4 127.0.0.1 number 123.0 date 1970-07-31 email mikael@gmail.com
 this line should be echoed out 1900-01-01
@@ -91,20 +91,20 @@ this line should be echoed out 1900-01-01
 
 This example ues an integer wildcard
 ```
-$ semfilter "integer(*) == 42" < file.txt
+$ logfilter "integer(*) == 42" < file.txt
 ipv6 1762:0:0:0:0:B03:1:AF18 with the ultimate answer 42
 ```
 <br>
 
 This example uses string wildcard and quote a string with single quotes
 ```
-$ semfilter -s "string(*) == 'the love'" < file.txt
+$ logfilter -s "string(*) == 'the love'" < file.txt
 the love for this file is amazing 1900-01-01
 this line should be echoed out 1900-01-01 the love
 ```
 
 This example demonstrates in and match 
 ```
-$ semfilter "string(*) in [the, amazing, number] && string(*) match \S+@\S+\.\S+" < file.txt
+$ logfilter "string(*) in [the, amazing, number] && string(*) match \S+@\S+\.\S+" < file.txt
 string ivp4 127.0.0.1 number 123.0 date 1970/07/31 email mikael@gmail.com
 ```
